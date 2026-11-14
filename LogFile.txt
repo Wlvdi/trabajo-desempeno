@@ -88,6 +88,44 @@ RESUMEN DE LO GENERADO:
 - Tests: backend/tests/salud.test.js (5 casos, OK).
 - Build: npm run build OK; docker compose up OK (db y api healthy,
   GET /api/salud 200).
+COMMIT: 8b145c8 chore(backend): estructura Express, /api/salud, Dockerfile y compose con PostgreSQL
+DEPLOY: no
+==================================================================
+
+==================================================================
+ID: 0003
+FECHA: 14-11-26 HORA: 13:49 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Explícame el diseño de la base de datos para el commit 2 (migraciones
+desde Supabase y datos semilla). Confirmo: npm test puede requerir el
+contenedor de la base de datos; aplicar la restricción de stock no
+negativo; guardar los pedidos web en la tabla ventas con columnas
+nuevas en vez de una tabla pedidos. Además, ¿cómo revisará el profesor
+una URL pública si todo corre con Docker en mi PC y sin Supabase?
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: esquema de Supabase adaptado a PostgreSQL propio (tabla
+  usuarios en lugar de auth.users, sin RLS, auditoría con
+  fn_usuario_sesion()); columnas de tienda en productos, galería
+  producto_imagenes, datos de pedido web en ventas, carritos
+  persistentes, CHECK stock_actual >= 0, pg_stat_statements.
+  Búsqueda sin índices (mejora a medir en Fase 2).
+  Deploy explicado: mismo docker compose en VM gratuita + Caddy/HTTPS.
+- Archivos: backend/migraciones/001_esquema_base.sql,
+  backend/migraciones/002_tienda.sql, backend/scripts/migrar.js,
+  backend/seeds/{generador,seed}.js, backend/vitest.config.js,
+  backend/tests/{setup-bd,bd.test,generador.test,seed.test}.js,
+  carga/k6/datos/usuarios.csv; .env.example (contraseñas del seed);
+  database/ eliminada.
+- Datos semilla deterministas: 500 productos, 1287 imágenes,
+  201 usuarios, 3000 ventas (7460 líneas), 120 compras.
+- Instalaciones: argon2 0.45.2.
+- Tests: 31 casos en 4 archivos, OK.
+- Build: npm run migrate y npm run seed OK; imagen Docker OK.
 COMMIT: pendiente
 DEPLOY: no
 ==================================================================
