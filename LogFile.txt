@@ -129,3 +129,100 @@ RESUMEN DE LO GENERADO:
 COMMIT: 9df08dc feat(db): migraciones adaptadas desde Supabase y seed de 500 productos
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0004
+FECHA: 14-11-26 HORA: 14:47 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+estado en 5 viñetas como indica AGENTS.md.
+
+Contexto: estamos migrando Subligol de Supabase a una API propia
+(Node.js + Express 5 + PostgreSQL 16 en Docker), en JavaScript ESM con
+JSDoc. Ya están hechos el commit 1 (estructura Express y /api/salud) y el
+commit 2 (migraciones en backend/migraciones/ y seed determinista en
+backend/seeds/). Los tests usan Vitest + Supertest contra la base
+subligol_test (backend/tests/setup-bd.js).
+
+Tarea: commit 3, endpoints de catálogo de la tienda, con estos pesos de
+carga distintos para la Fase 2:
+
+1. GET /api/home (página LIVIANA): productos destacados (activos) y las
+   categorías con su cantidad de productos.
+2. GET /api/categorias: listado de categorías.
+3. GET /api/productos (página MEDIA): filtros y paginación en el
+   servidor. Parámetros: pagina (por defecto 1), limite (por defecto 12,
+   máximo 48), categoria (id), temporada, precio_min, precio_max,
+   en_stock (true/false), orden (destacado | precio_asc | precio_desc |
+   nombre_asc | nombre_desc | stock_desc). Solo productos activos.
+   Respuesta: { items, total, pagina, limite, totalPaginas }.
+4. GET /api/productos/:id (página PESADA): producto con su categoría,
+   galería (producto_imagenes ordenada), unidades vendidas en los
+   últimos 90 días, y 4 productos relacionados de la misma categoría
+   ordenados por unidades vendidas (join con detalle_ventas). 404 si no
+   existe o el id no es un UUID válido.
+5. GET /api/buscar?q=&categoria=: búsqueda con ILIKE en nombre y
+   descripcion, paginada igual que /api/productos. q obligatorio, de 2 a
+   100 caracteres. Decisión del grupo: la búsqueda va SIN índices
+   (pg_trgm queda como mejora medible en la Fase 2); no crees índices.
+
+Requisitos:
+- Los nombres de los campos deben coincidir con los que usa el frontend
+  (src/services/mockData.js y las vistas en src/views/store/):
+  categoria_nombre, imagenes_galeria, descripcion_larga, especificaciones,
+  precio_venta, stock_actual, stock_minimo, destacado, imagen_url,
+  temporada, sku. Los numeric de PostgreSQL deben salir como número,
+  no como texto.
+- Solo consultas parametrizadas (nada de concatenar strings en el SQL).
+  El orden se elige de una lista blanca.
+- Validación de parámetros con respuestas 400 claras en español.
+- Una ruta por archivo en backend/src/rutas/, registradas en
+  backend/src/app.js. Si conviene, separa las consultas SQL en
+  backend/src/consultas/.
+- No toques todavía el frontend ni agregues métricas (son los commits
+  8 y 7).
+- Tests de integración para cada endpoint usando sembrar() de
+  backend/seeds/seed.js sobre subligol_test: paginación, cada filtro,
+  cada orden, límites, 400 y 404, que la búsqueda encuentre productos
+  conocidos del seed y que el detalle traiga galería y relacionados.
+  Los tests existentes deben seguir pasando.
+
+Antes de escribir código, explícame el diseño de cada consulta SQL
+(joins, qué hace pesada a cada página) y la lista de archivos que vas a
+crear o modificar, y espera mi confirmación. Al terminar, ejecuta
+npm test, prueba los endpoints con docker compose up -d --build y curl,
+y pregúntame si registro el prompt en LogFile.txt, si hago commit
+(feat(api): home, categorías, catálogo, detalle y búsqueda) y si hago
+deploy.
+
+En el otro PC, el agente tiene que leer AGENTS.md. Si es Claude Code, lo hace a través de CLAUDE.md.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño confirmado: limite > 48 responde 400 (no se recorta);
+  producto inactivo responde 404; relacionados ordenados por unidades
+  vendidas de todo el historial (ventas no anuladas). numeric -> float8
+  en el SELECT; costo_unitario no se expone. Catálogo y búsqueda:
+  count y página en paralelo con el mismo WHERE; ORDER BY desde lista
+  blanca con desempate por id. Detalle: galería con array_agg,
+  unidades_vendidas_90d (detalle_ventas JOIN ventas, now() - 90 días) y
+  relacionados con agregación de detalle_ventas. Búsqueda ILIKE sin
+  índices, con escape de % y _. Sin cambios en frontend ni métricas.
+- Riesgo anotado: las ventas del seed terminan el 01-11-2026; desde el
+  30-01-2027 unidades_vendidas_90d sería 0 si no se ajusta el seed.
+- Archivos nuevos: backend/src/validacion.js,
+  backend/src/consultas/{productos,categorias}.js,
+  backend/src/rutas/{home,categorias,productos,buscar}.js,
+  backend/tests/{ayudantes,validacion.test,home.test,productos.test,
+  producto-detalle.test,buscar.test}.js. Modificado: backend/src/app.js.
+- Instalaciones: ninguna.
+- Tests: 99 casos en 9 archivos, OK (31 previos + 68 nuevos).
+- Build: docker compose up -d --build OK; curl a /api/home,
+  /api/categorias, /api/productos, /api/productos/:id y /api/buscar OK,
+  incluidos 400 y 404.
+COMMIT: feat(api): home, categorías, catálogo, detalle y búsqueda
+DEPLOY: no
+==================================================================

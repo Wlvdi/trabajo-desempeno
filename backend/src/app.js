@@ -5,6 +5,10 @@
  */
 import express from 'express'
 import { rutasSalud } from './rutas/salud.js'
+import { rutasHome } from './rutas/home.js'
+import { rutasCategorias } from './rutas/categorias.js'
+import { rutasProductos } from './rutas/productos.js'
+import { rutasBuscar } from './rutas/buscar.js'
 import { rutaNoEncontrada, manejarErrores } from './middlewares/errores.js'
 
 /**
@@ -18,6 +22,10 @@ export function crearApp({ pool }) {
   app.use(express.json({ limit: '100kb' }))
 
   app.use('/api/salud', rutasSalud(pool))
+  app.use('/api/home', rutasHome(pool))
+  app.use('/api/categorias', rutasCategorias(pool))
+  app.use('/api/productos', rutasProductos(pool))
+  app.use('/api/buscar', rutasBuscar(pool))
 
   app.use(rutaNoEncontrada)
   app.use(manejarErrores)
