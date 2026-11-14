@@ -17,13 +17,13 @@ import {
   uuidOpcional
 } from '../validacion.js'
 
-const NOMBRES_ORDEN = /** @type {(keyof typeof ORDENES)[]} */ (Object.keys(ORDENES))
+export const NOMBRES_ORDEN = /** @type {(keyof typeof ORDENES)[]} */ (Object.keys(ORDENES))
 
 /**
- * Lee y valida los filtros del catálogo.
+ * Lee y valida los filtros del catálogo (también los usa /api/buscar).
  * @param {Record<string, unknown>} query
  */
-function leerFiltros(query) {
+export function leerFiltros(query) {
   const filtros = {
     categoria: uuidOpcional('categoria', query.categoria),
     temporada: textoOpcional('temporada', query.temporada, 50),

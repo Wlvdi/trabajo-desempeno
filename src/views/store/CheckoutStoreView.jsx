@@ -1,5 +1,5 @@
 // src/views/store/CheckoutStoreView.jsx
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import {
   CreditCard,
@@ -20,7 +20,7 @@ import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 import { procesarOrdenWeb } from '../../services/api'
 import { trackBeginCheckout, trackPurchase } from '../../services/analytics'
-import WebpaySandboxModal from '../../components/store/WebpaySandboxModal'
+import PagoSimuladoModal from '../../components/store/PagoSimuladoModal'
 
 // Regiones y Comunas de Chile para el checkout
 const REGIONES_CHILE = [
@@ -47,27 +47,34 @@ const REGIONES_CHILE = [
 ]
 
 export default function CheckoutStoreView() {
-  const { items, subtotal, costoEnvio, total, clearCart } = useCart()
-  const { currentUser } = useAuth()
+  const { items, cargando, subtotal, costoEnvio, total, recargarCarrito } = useCart()
+  const { currentUser, openAuthModal } = useAuth()
   const navigate = useNavigate()
 
-  // Formulario Despacho
+  // Formulario de despacho: los mismos campos que valida POST /api/checkout.
+  // El RUT y las notas no se piden porque la API no los guarda; el correo es el de la cuenta.
   const [nombre, setNombre] = useState(currentUser?.nombre?.split(' ')[0] || '')
-  const [apellido, setApellido] = useState(currentUser?.nombre?.split(' ')[1] || 'Solis')
-  const [rut, setRut] = useState('19.876.543-2')
-  const [email, setEmail] = useState(currentUser?.email || 'cliente.prueba@subligol.cl')
+  const [apellido, setApellido] = useState(currentUser?.nombre?.split(' ').slice(1).join(' ') || '')
   const [telefono, setTelefono] = useState('+56 9 8765 4321')
   const [direccion, setDireccion] = useState('Av. Dieciocho 390')
   const [depto, setDepto] = useState('Oficina 402')
   const [region, setRegion] = useState('Región Metropolitana de Santiago')
   const [comuna, setComuna] = useState('Santiago')
-  const [notas, setNotas] = useState('Timbre en recepción')
 
-  // Pasarela
-  const [metodoPago, setMetodoPago] = useState('webpay') // 'webpay' | 'transferencia'
-  const [isSandboxOpen, setIsSandboxOpen] = useState(false)
+  // Pago simulado
+  const [isPagoOpen, setIsPagoOpen] = useState(false)
   const [errorCheckout, setErrorCheckout] = useState(null)
+  /** Productos sin stock suficiente (409): [{ producto_id, nombre, solicitado, disponible }] */
+  const [faltantes, setFaltantes] = useState(null)
   const [procesandoFinal, setProcesandoFinal] = useState(false)
+
+  // Al iniciar sesión desde el checkout se completa el nombre si estaba vacío.
+  useEffect(() => {
+    if (!currentUser) return
+    const [primero, ...resto] = (currentUser.nombre || '').split(' ')
+    setNombre((n) => n || primero || '')
+    setApellido((a) => a || resto.join(' '))
+  }, [currentUser])
 
   // Obtener comunas de la región seleccionada
   const comunasDisponibles = REGIONES_CHILE.find(r => r.nombre === region)?.comunas || []
@@ -80,72 +87,73 @@ export default function CheckoutStoreView() {
     }).format(Number(val) || 0)
   }
 
-  // Rastrear inicio de checkout en GA4
-  React.useEffect(() => {
-    if (items.length > 0) {
+  // Rastrear inicio de checkout en GA4 (una vez, cuando el carrito ya cargó desde la API).
+  const checkoutRastreado = useRef(false)
+  useEffect(() => {
+    if (!checkoutRastreado.current && items.length > 0) {
+      checkoutRastreado.current = true
       trackBeginCheckout(items, total)
     }
-  }, [])
+  }, [items, total])
 
-  // Validación y apertura de Sandbox
+  // Validación y apertura del pago simulado
   const handleContinuarAlPago = (e) => {
     e.preventDefault()
     setErrorCheckout(null)
+    setFaltantes(null)
 
-    if (!nombre.trim() || !apellido.trim() || !rut.trim() || !email.trim() || !direccion.trim()) {
+    if (!currentUser) {
+      setErrorCheckout('Inicia sesión para completar la compra. Tu carrito se conservará.')
+      openAuthModal('login')
+      return
+    }
+    if (!nombre.trim() || !apellido.trim() || !telefono.trim() || !direccion.trim()) {
       setErrorCheckout('Por favor completa todos los campos obligatorios de despacho.')
       return
     }
-
-    if (metodoPago === 'webpay') {
-      setIsSandboxOpen(true)
-    } else {
-      // Transferencia directa
-      handleFinalizarCompra({
-        codigoAutorizacion: 'TRANSF-MANUAL',
-        metodoPagoNombre: 'Transferencia Bancaria (Cuenta RUT / Banco Estado)'
-      })
-    }
+    setIsPagoOpen(true)
   }
 
-  // Confirmación exitosa desde el Sandbox Webpay
-  const handleFinalizarCompra = async (pagoInfo) => {
-    setIsSandboxOpen(false)
+  // Confirmación del pago simulado: POST /api/checkout con medio_pago "mock".
+  const handleConfirmarPago = async () => {
     setProcesandoFinal(true)
-
     try {
-      const clienteData = {
-        nombre: nombre.trim(),
-        apellido: apellido.trim(),
-        rut: rut.trim(),
-        email: email.trim(),
-        telefono: telefono.trim(),
-        direccion: direccion.trim(),
-        depto: depto.trim(),
-        region,
-        comuna
-      }
-
-      const ordenCreada = await procesarOrdenWeb({
-        cliente: clienteData,
-        items,
-        metodoPago: pagoInfo.tipoTarjeta || 'Webpay Plus Transbank',
-        codigoAutorizacion: pagoInfo.codigoAutorizacion || 'TBK-000000',
-        total,
-        costoEnvio,
-        notas
+      const orden = await procesarOrdenWeb({
+        despacho: {
+          nombre: nombre.trim(),
+          apellido: apellido.trim(),
+          telefono: telefono.trim(),
+          region,
+          comuna,
+          direccion: direccion.trim(),
+          ...(depto.trim() ? { depto: depto.trim() } : {})
+        }
       })
 
       // Evento GA4 de compra exitosa
-      trackPurchase(ordenCreada)
+      trackPurchase(orden)
 
-      clearCart()
-      navigate(`/orden/${ordenCreada.id}`)
+      setIsPagoOpen(false)
+      await recargarCarrito() // la API ya vació el carrito
+      navigate(`/orden/${orden.id}`)
     } catch (err) {
-      console.error(err)
-      setErrorCheckout('Error al guardar la orden: ' + err.message)
+      setIsPagoOpen(false)
       setProcesandoFinal(false)
+      if (err.status === 409 && Array.isArray(err.detalle?.productos)) {
+        setFaltantes(err.detalle.productos)
+        setErrorCheckout('Algunos productos ya no tienen stock suficiente. Ajusta tu carrito para continuar.')
+        recargarCarrito()
+      } else if (err.status === 401) {
+        setErrorCheckout('Tu sesión expiró. Inicia sesión de nuevo para completar la compra.')
+        openAuthModal('login')
+      } else {
+        setErrorCheckout(err.message || 'No se pudo completar la compra.')
+      }
     }
+  }
+
+  if (cargando) {
+    return <div className="py-16 text-center text-xs font-semibold text-slate-500">Cargando tu carrito...</div>
   }
 
   if (items.length === 0 && !procesandoFinal) {
@@ -172,7 +180,7 @@ export default function CheckoutStoreView() {
           Checkout y Despacho Seguro
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Ingresa tus datos de envío en Chile y realiza tu pago mediante el Sandbox de Webpay Plus.
+          Ingresa tus datos de envío en Chile y confirma la compra con el pago simulado (entorno de pruebas).
         </p>
       </div>
 
@@ -183,12 +191,26 @@ export default function CheckoutStoreView() {
         </div>
       )}
 
+      {faltantes && (
+        <div role="alert" className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+          <p className="font-bold">Productos sin stock suficiente:</p>
+          <ul className="list-disc pl-5 space-y-1">
+            {faltantes.map((p) => (
+              <li key={p.producto_id}>
+                <strong>{p.nombre}</strong>: pediste {p.solicitado}, {p.disponible === 0 ? 'no quedan unidades' : `quedan ${p.disponible}`}.
+              </li>
+            ))}
+          </ul>
+          <Link to="/carrito" className="inline-block font-bold text-indigo-700 underline">Ajustar mi carrito</Link>
+        </div>
+      )}
+
       <form onSubmit={handleContinuarAlPago} className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         {/* Formulario de Despacho (2 columnas) */}
         <div className="lg:col-span-2 space-y-6">
           
-          {/* Datos Personales y RUT */}
+          {/* Datos Personales */}
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-4">
             <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
               <User className="w-4 h-4 text-indigo-600" />
@@ -219,19 +241,6 @@ export default function CheckoutStoreView() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  RUT Chileno * (Ej. 12.345.678-9)
-                </label>
-                <input
-                  type="text"
-                  value={rut}
-                  onChange={(e) => setRut(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
-                  required
-                />
-              </div>
-
-              <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Teléfono Móvil *</label>
                 <input
                   type="tel"
@@ -242,16 +251,14 @@ export default function CheckoutStoreView() {
                 />
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Correo Electrónico para Factura / Boleta *
-                </label>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Correo de la cuenta</label>
                 <input
                   type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
-                  required
+                  value={currentUser?.email || ''}
+                  placeholder="Inicia sesión para continuar"
+                  readOnly
+                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500"
                 />
               </div>
             </div>
@@ -322,18 +329,6 @@ export default function CheckoutStoreView() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Instrucciones de Entrega
-                </label>
-                <input
-                  type="text"
-                  value={notas}
-                  onChange={(e) => setNotas(e.target.value)}
-                  placeholder="Ej. Dejar con conserje"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
-                />
-              </div>
             </div>
           </div>
 
@@ -341,69 +336,18 @@ export default function CheckoutStoreView() {
           <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-4">
             <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
               <CreditCard className="w-4 h-4 text-indigo-600" />
-              3. Medio de Pago Disponible en Chile
+              3. Medio de Pago
             </h3>
 
-            <div className="space-y-3">
-              {/* Webpay Plus (Destacado) */}
-              <label
-                className={`flex items-start gap-4 p-4 rounded-2xl border-2 cursor-pointer transition ${
-                  metodoPago === 'webpay'
-                    ? 'border-red-600 bg-red-50/40 ring-2 ring-red-100'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="metodoPago"
-                  value="webpay"
-                  checked={metodoPago === 'webpay'}
-                  onChange={() => setMetodoPago('webpay')}
-                  className="mt-1 text-red-600 focus:ring-red-500 accent-red-600"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs sm:text-sm text-slate-900 flex items-center gap-2">
-                      <span className="text-red-600 font-black">Webpay Plus</span>
-                      <span>(Transbank Sandbox)</span>
-                    </span>
-                    <span className="px-2.5 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded-full">
-                      Recomendado
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Débito (Redcompra), Tarjetas de Crédito en cuotas sin interés y Cuenta RUT de Banco Estado.
-                  </p>
-                </div>
-              </label>
-
-              {/* Transferencia Bancaria Manual */}
-              <label
-                className={`flex items-start gap-4 p-4 rounded-2xl border-2 cursor-pointer transition ${
-                  metodoPago === 'transferencia'
-                    ? 'border-indigo-600 bg-indigo-50/40 ring-2 ring-indigo-100'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <input
-                  type="radio"
-                  name="metodoPago"
-                  value="transferencia"
-                  checked={metodoPago === 'transferencia'}
-                  onChange={() => setMetodoPago('transferencia')}
-                  className="mt-1 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-extrabold text-xs sm:text-sm text-slate-900">
-                      Transferencia Electrónica Manual (Cuenta RUT)
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Simulación de pago manual enviando comprobante a pagos@subligol.cl.
-                  </p>
-                </div>
-              </label>
+            <div className="flex items-start gap-4 p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/40">
+              <input type="radio" name="metodoPago" value="mock" checked readOnly className="mt-1 accent-indigo-600" />
+              <div className="flex-1">
+                <span className="font-extrabold text-xs sm:text-sm text-slate-900">Pago simulado (entorno de pruebas)</span>
+                <p className="text-xs text-slate-500 mt-1">
+                  No se conecta con ningún banco ni pasarela de pago y no se cobra dinero. La integración con un medio de
+                  pago real se agregará más adelante.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -456,37 +400,38 @@ export default function CheckoutStoreView() {
             <button
               type="submit"
               disabled={procesandoFinal}
-              className="w-full py-4 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-2xl text-xs sm:text-sm font-extrabold shadow-lg shadow-red-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-extrabold shadow-lg shadow-indigo-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {procesandoFinal ? (
-                <span>Guardando y descontando stock...</span>
+                <span>Registrando la compra...</span>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Pagar con Webpay Plus Sandbox</span>
+                  <span>Continuar al pago simulado</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
 
             <div className="pt-2 text-center text-[10px] text-slate-400 space-y-1">
-              <p>🔒 Transacción cifrada con protocolo TLS 1.3</p>
-              <p>Ambiente seguro de integración Transbank para la UTEM.</p>
+              <p>Entorno de pruebas del proyecto (UTEM): no se realizan cobros reales.</p>
             </div>
           </div>
         </div>
 
       </form>
 
-      {/* Modal Sandbox Webpay Plus Oficial */}
-      <WebpaySandboxModal
-        isOpen={isSandboxOpen}
+      {/* Pago simulado (medio_pago "mock") */}
+      <PagoSimuladoModal
+        isOpen={isPagoOpen}
         monto={total}
-        ordenCompra={`OC-${Date.now().toString().slice(-6)}`}
-        cliente={{ nombre, apellido, rut, email }}
-        onSuccess={handleFinalizarCompra}
-        onFailure={(msg) => setErrorCheckout(msg)}
-        onCancel={() => setIsSandboxOpen(false)}
+        procesando={procesandoFinal}
+        onConfirmar={handleConfirmarPago}
+        onRechazar={(msg) => {
+          setIsPagoOpen(false)
+          setErrorCheckout(msg)
+        }}
+        onCancel={() => setIsPagoOpen(false)}
       />
 
     </div>

@@ -18,7 +18,7 @@ import {
   Layers,
   Activity
 } from 'lucide-react'
-import { fetchProductosPublicos, fetchCategorias } from '../../services/api'
+import { fetchHome } from '../../services/api'
 import { useCart } from '../../context/CartContext'
 
 export default function HomeStoreView() {
@@ -30,11 +30,9 @@ export default function HomeStoreView() {
 
   useEffect(() => {
     const startTime = performance.now()
-    Promise.all([
-      fetchProductosPublicos({ orden: 'destacado' }),
-      fetchCategorias()
-    ]).then(([prods, cats]) => {
-      setDestacados(prods.slice(0, 6)) // Carga balanceada / ligera (6 productos)
+    // Página LIVIANA: una sola petición (GET /api/home) con destacados y categorías.
+    fetchHome().then(({ destacados: prods, categorias: cats }) => {
+      setDestacados(prods.slice(0, 6)) // Se muestran 6 destacados en la portada
       setCategorias(cats)
       const endTime = performance.now()
       setLoadTimeMs(Math.round(endTime - startTime))

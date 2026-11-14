@@ -87,10 +87,10 @@ export default function Navbar({ activeTab, setActiveTab, isConnected }) {
                 : 'bg-amber-50 text-amber-700 border-amber-200 cursor-pointer'
             }`}
             onClick={() => !isConnected && setActiveTab('config')}
-            title={isConnected ? 'Conectado a Supabase' : 'Haz clic para configurar Supabase'}
+            title={isConnected ? 'La API propia responde' : 'Haz clic para ver el estado de la API'}
             >
               <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-              {isConnected ? 'Supabase Conectado' : 'Sin Conectar'}
+              {isConnected ? 'API Conectada' : 'API sin respuesta'}
             </div>
 
             {/* Hamburguesa Móvil */}

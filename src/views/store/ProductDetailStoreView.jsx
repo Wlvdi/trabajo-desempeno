@@ -1,10 +1,7 @@
 // src/views/store/ProductDetailStoreView.jsx
 import React, { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import {
-  fetchProductoById,
-  fetchProductosRelacionados
-} from '../../services/api'
+import { fetchProductoById } from '../../services/api'
 import { useCart } from '../../context/CartContext'
 import { trackViewItem } from '../../services/analytics'
 import {
@@ -42,17 +39,14 @@ export default function ProductDetailStoreView() {
     setLoading(true)
     const startTime = performance.now()
 
-    fetchProductoById(id).then(async (prod) => {
+    // Página PESADA: GET /api/productos/:id ya trae galería y relacionados
+    // (una sola petición). null si el producto no existe.
+    fetchProductoById(id).then((prod) => {
       setProducto(prod)
       setSelectedImage(prod?.imagen_url || '')
       setCantidad(1)
-
-      if (prod) {
-        trackViewItem(prod)
-        const catId = prod.categoria_id || prod.categoria?.id
-        const rels = await fetchProductosRelacionados(catId, prod.id, 4)
-        setRelacionados(rels)
-      }
+      setRelacionados(prod?.relacionados || [])
+      if (prod) trackViewItem(prod)
 
       const endTime = performance.now()
       setLoadTimeMs(Math.round(endTime - startTime))
@@ -106,10 +100,10 @@ export default function ProductDetailStoreView() {
   const isAgotado = stockDisponible <= 0
   const isCritico = stockDisponible > 0 && stockDisponible <= Number(producto.stock_minimo)
 
-  const handleComprarAhora = () => {
+  const handleComprarAhora = async () => {
     if (isAgotado) return
-    addToCart(producto, cantidad)
-    navigate('/checkout')
+    // Solo se avanza al checkout si la API aceptó el producto en el carrito.
+    if (await addToCart(producto, cantidad)) navigate('/checkout')
   }
 
   return (

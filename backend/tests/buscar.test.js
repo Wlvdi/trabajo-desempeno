@@ -113,3 +113,64 @@ describe('GET /api/buscar', () => {
     expect(res.body.error).toMatch(mensaje)
   })
 })
+
+describe('GET /api/buscar: filtros y orden del catálogo', () => {
+  /** Cantidad esperada con ILIKE + una condición SQL fija del test. */
+  async function esperadosCon(texto, condicion, params = []) {
+    const { rows } = await pool.query(
+      `select count(*)::int as n from productos
+        where activo and (nombre ilike $1 or descripcion ilike $1) and ${condicion}`,
+      [`%${texto}%`, ...params]
+    )
+    return rows[0].n
+  }
+
+  it('filtra por temporada', async () => {
+    const res = await buscar({ q: 'taza', temporada: 'Navidad', limite: 48 })
+    expect(res.body.total).toBe(await esperadosCon('taza', "temporada = 'Navidad'"))
+    expect(res.body.total).toBeGreaterThan(0)
+    expect(res.body.items.every((p) => p.temporada === 'Navidad')).toBe(true)
+  })
+
+  it('filtra por rango de precio y por stock', async () => {
+    const precio = await buscar({ q: 'diseño', precio_min: 5000, precio_max: 12000, limite: 48 })
+    expect(precio.body.total).toBe(await esperadosCon('diseño', 'precio_venta between 5000 and 12000'))
+    expect(precio.body.items.every((p) => p.precio_venta >= 5000 && p.precio_venta <= 12000)).toBe(true)
+
+    const [con, sin] = await Promise.all([
+      buscar({ q: 'diseño', en_stock: 'true' }),
+      buscar({ q: 'diseño', en_stock: 'false', limite: 48 })
+    ])
+    expect(sin.body.total).toBe(await esperadosCon('diseño', 'stock_actual = 0'))
+    expect(con.body.total + sin.body.total).toBe(await esperados('diseño'))
+    expect(sin.body.items.every((p) => p.stock_actual === 0)).toBe(true)
+  })
+
+  it('acepta los órdenes del catálogo', async () => {
+    const asc = await buscar({ q: 'diseño', orden: 'precio_asc', limite: 48 })
+    const precios = asc.body.items.map((p) => p.precio_venta)
+    expect(precios.every((v, i) => i === 0 || precios[i - 1] <= v)).toBe(true)
+
+    const stock = await buscar({ q: 'diseño', orden: 'stock_desc', limite: 48 })
+    const unidades = stock.body.items.map((p) => p.stock_actual)
+    expect(unidades.every((v, i) => i === 0 || unidades[i - 1] >= v)).toBe(true)
+  })
+
+  it('"relevancia" es el orden por defecto (coincidencias en el nombre primero)', async () => {
+    const [porDefecto, relevancia] = await Promise.all([
+      buscar({ q: 'navidad', limite: 48 }),
+      buscar({ q: 'navidad', orden: 'relevancia', limite: 48 })
+    ])
+    expect(relevancia.body.items.map((p) => p.id)).toEqual(porDefecto.body.items.map((p) => p.id))
+  })
+
+  it.each([
+    [{ q: 'taza', orden: 'aleatorio' }, /orden.*relevancia, destacado/],
+    [{ q: 'taza', precio_min: 9000, precio_max: 1000 }, /no puede ser mayor/],
+    [{ q: 'taza', en_stock: 'si' }, /en_stock/]
+  ])('responde 400 con %o', async (query, mensaje) => {
+    const res = await buscar(query)
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(mensaje)
+  })
+})

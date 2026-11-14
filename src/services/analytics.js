@@ -150,21 +150,23 @@ export function trackBeginCheckout(items, total) {
 }
 
 // E. Compra Finalizada con Éxito (purchase)
+// Recibe la orden que devuelve POST /api/checkout:
+// { codigo, total, costo_envio, items: [{ producto_id, sku, nombre, cantidad, precio_unitario }] }
 export function trackPurchase(orden) {
   if (!orden || typeof window === 'undefined' || !window.gtag) return
   window.gtag('event', 'purchase', {
-    transaction_id: orden.id,
+    transaction_id: orden.codigo,
     value: Number(orden.total),
     tax: Math.round(Number(orden.total) * 0.19),
-    shipping: Number(orden.costoEnvio || 0),
+    shipping: Number(orden.costo_envio || 0),
     currency: 'CLP',
     coupon: 'UTEM2026',
     items: (orden.items || []).map(i => ({
-      item_id: i.sku || i.id,
+      item_id: i.sku || i.producto_id,
       item_name: i.nombre,
-      price: Number(i.precio_venta),
+      price: Number(i.precio_unitario),
       quantity: Number(i.cantidad)
     }))
   })
-  console.log(`[GA4 E-commerce] purchase completada:`, orden.id)
+  console.log(`[GA4 E-commerce] purchase completada:`, orden.codigo)
 }

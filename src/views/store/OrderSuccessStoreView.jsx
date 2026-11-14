@@ -15,18 +15,26 @@ import {
   ExternalLink
 } from 'lucide-react'
 import { fetchOrdenById } from '../../services/api'
+import { useAuth } from '../../context/AuthContext'
 
 export default function OrderSuccessStoreView() {
   const { id } = useParams()
+  const { currentUser, openAuthModal } = useAuth()
   const [orden, setOrden] = useState(null)
   const [loading, setLoading] = useState(true)
 
+  // GET /api/ordenes/:id: solo el dueño o un admin (404 para cualquier otro).
   useEffect(() => {
-    fetchOrdenById(id).then(data => {
-      setOrden(data)
+    if (!currentUser) {
       setLoading(false)
-    })
-  }, [id])
+      return
+    }
+    setLoading(true)
+    fetchOrdenById(id)
+      .then(setOrden)
+      .catch(() => setOrden(null))
+      .finally(() => setLoading(false))
+  }, [id, currentUser?.id])
 
   const formatCLP = (val) => {
     return new Intl.NumberFormat('es-CL', {
@@ -48,6 +56,21 @@ export default function OrderSuccessStoreView() {
     )
   }
 
+  if (!currentUser) {
+    return (
+      <div className="max-w-xl mx-auto py-16 text-center space-y-4">
+        <h2 className="text-xl font-bold text-slate-900">Inicia sesión para ver tu orden</h2>
+        <button
+          type="button"
+          onClick={() => openAuthModal('login')}
+          className="inline-block px-4 py-2 bg-indigo-600 text-white text-xs font-bold rounded-xl"
+        >
+          Iniciar sesión
+        </button>
+      </div>
+    )
+  }
+
   if (!orden) {
     return (
       <div className="max-w-xl mx-auto py-16 text-center space-y-4">
@@ -63,7 +86,7 @@ export default function OrderSuccessStoreView() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-16">
       
-      {/* Banner de Confirmación Transbank */}
+      {/* Banner de Confirmación */}
       <div className="bg-emerald-600 text-white p-8 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center gap-6">
         <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0">
           <CheckCircle className="w-10 h-10 text-white" />
@@ -73,7 +96,7 @@ export default function OrderSuccessStoreView() {
             Transacción Exitosa
           </span>
           <h1 className="text-2xl sm:text-3xl font-black">
-            ¡Pago Aprobado por Webpay Plus!
+            ¡Compra registrada con pago simulado!
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100">
             Tu compra ha sido procesada correctamente y el stock en bodega ya fue actualizado.
@@ -94,15 +117,15 @@ export default function OrderSuccessStoreView() {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Comprobante de Venta Electrónica Webpay Plus
+              Comprobante de compra (pago simulado, entorno de pruebas)
             </p>
           </div>
 
           <div className="text-left sm:text-right text-xs space-y-1">
-            <p className="font-bold text-slate-900">Orden de Compra: <span className="font-mono text-indigo-600">{orden.id}</span></p>
+            <p className="font-bold text-slate-900">Orden de Compra: <span className="font-mono text-indigo-600">{orden.codigo}</span></p>
             <p className="text-slate-500">Fecha: {new Date(orden.fecha).toLocaleString('es-CL')}</p>
             <p className="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg inline-block">
-              Código Autorización: {orden.codigoAutorizacion}
+              Código Autorización: {orden.codigo_autorizacion}
             </p>
           </div>
         </div>
@@ -113,19 +136,18 @@ export default function OrderSuccessStoreView() {
             <span className="font-extrabold text-slate-900 uppercase tracking-wider block text-[11px]">
               Cliente & Facturación
             </span>
-            <p className="font-bold text-slate-800">{orden.cliente?.nombre} {orden.cliente?.apellido}</p>
-            <p className="text-slate-500">RUT: {orden.cliente?.rut}</p>
-            <p className="text-slate-500">Email: {orden.cliente?.email}</p>
-            <p className="text-slate-500">Teléfono: {orden.cliente?.telefono}</p>
+            <p className="font-bold text-slate-800">{orden.despacho?.nombre} {orden.despacho?.apellido}</p>
+            <p className="text-slate-500">Email: {currentUser.email}</p>
+            <p className="text-slate-500">Teléfono: {orden.despacho?.telefono}</p>
           </div>
 
           <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-1.5">
             <span className="font-extrabold text-slate-900 uppercase tracking-wider block text-[11px]">
               Destino de Entrega (Chile)
             </span>
-            <p className="font-bold text-slate-800">{orden.cliente?.direccion} {orden.cliente?.depto && `(${orden.cliente?.depto})`}</p>
-            <p className="text-slate-500">{orden.cliente?.comuna}, {orden.cliente?.region}</p>
-            <p className="text-slate-500">Método de Pago: <strong className="text-slate-800">{orden.metodoPago}</strong></p>
+            <p className="font-bold text-slate-800">{orden.despacho?.direccion} {orden.despacho?.depto && `(${orden.despacho.depto})`}</p>
+            <p className="text-slate-500">{orden.despacho?.comuna}, {orden.despacho?.region}</p>
+            <p className="text-slate-500">Método de Pago: <strong className="text-slate-800">{orden.medio_pago === 'mock' ? 'Pago simulado' : orden.medio_pago}</strong></p>
           </div>
         </div>
 
@@ -155,10 +177,10 @@ export default function OrderSuccessStoreView() {
                       {item.cantidad}
                     </td>
                     <td className="py-3 px-4 text-right font-medium text-slate-600">
-                      {formatCLP(item.precio_venta)}
+                      {formatCLP(item.precio_unitario)}
                     </td>
                     <td className="py-3 px-4 text-right font-bold text-slate-900">
-                      {formatCLP(item.precio_venta * item.cantidad)}
+                      {formatCLP(item.subtotal)}
                     </td>
                   </tr>
                 ))}
@@ -171,9 +193,13 @@ export default function OrderSuccessStoreView() {
         <div className="flex justify-end">
           <div className="w-full sm:w-64 space-y-2 text-xs">
             <div className="flex justify-between text-slate-600">
+              <span>Neto:</span>
+              <span className="font-semibold text-slate-900">{formatCLP(orden.neto)}</span>
+            </div>
+            <div className="flex justify-between text-slate-600">
               <span>Despacho:</span>
               <span className="font-semibold text-slate-900">
-                {orden.costoEnvio === 0 ? 'GRATIS' : formatCLP(orden.costoEnvio)}
+                {orden.costo_envio === 0 ? 'GRATIS' : formatCLP(orden.costo_envio)}
               </span>
             </div>
             <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">

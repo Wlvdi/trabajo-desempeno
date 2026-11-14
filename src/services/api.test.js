@@ -1,0 +1,269 @@
+// src/services/api.test.js
+// Tests del cliente HTTP de la API propia, con fetch simulado (entorno Node).
+import { describe, it, expect, vi } from 'vitest'
+import {
+  ErrorApi,
+  fetchCarrito,
+  fetchProductoById,
+  fetchProductosPublicos,
+  fusionarCarrito,
+  agregarAlCarrito,
+  fetchProductos,
+  pedir,
+  procesarOrdenWeb,
+  urlBase
+} from './api'
+import {
+  alCerrarSesion,
+  guardarCarritoAnonimo,
+  guardarSesion,
+  obtenerCarritoAnonimo,
+  obtenerToken,
+  obtenerUsuario
+} from './sesion'
+
+const USUARIO = { id: 'u-1', email: 'test001@ejemplo.cl', nombre: 'Test', rol: 'cliente' }
+const ID_CARRITO = '3f1c2a4b-5d6e-4f70-8a9b-0c1d2e3f4a5b'
+
+/**
+ * Reemplaza fetch por una función que responde en orden las respuestas dadas.
+ * @param {...{ status?: number, cuerpo?: unknown, cabeceras?: Record<string, string> }} respuestas
+ */
+function simularFetch(...respuestas) {
+  const fetchFalso = vi.fn(async () => {
+    const { status = 200, cuerpo = {}, cabeceras = {} } = respuestas.shift() ?? {}
+    return new Response(cuerpo === null ? null : JSON.stringify(cuerpo), {
+      status,
+      headers: { 'Content-Type': 'application/json', ...cabeceras }
+    })
+  })
+  vi.stubGlobal('fetch', fetchFalso)
+  return fetchFalso
+}
+
+/** URL y cabeceras de la llamada número `n` a fetch. */
+function llamada(fetchFalso, n = 0) {
+  const [url, opciones] = fetchFalso.mock.calls[n]
+  return { url, opciones, cabeceras: opciones.headers }
+}
+
+describe('URL base', () => {
+  it('usa /api en el mismo origen si VITE_API_URL no está definida', async () => {
+    vi.stubEnv('VITE_API_URL', '')
+    const f = simularFetch({ cuerpo: { estado: 'ok' } })
+    await pedir('GET', '/salud')
+    expect(urlBase()).toBe('/api')
+    expect(llamada(f).url).toBe('/api/salud')
+  })
+
+  it('usa VITE_API_URL si está definida (sin barra final duplicada)', async () => {
+    vi.stubEnv('VITE_API_URL', 'https://api.subligol.test/api/')
+    const f = simularFetch({ cuerpo: {} })
+    await pedir('GET', '/home')
+    expect(llamada(f).url).toBe('https://api.subligol.test/api/home')
+  })
+
+  it('arma la query omitiendo valores vacíos', async () => {
+    const f = simularFetch({ cuerpo: { items: [] } })
+    await pedir('GET', '/productos', { query: { pagina: 2, temporada: '', categoria: undefined, en_stock: 'true' } })
+    expect(llamada(f).url).toBe('/api/productos?pagina=2&en_stock=true')
+  })
+})
+
+describe('Cabeceras', () => {
+  it('sin sesión ni carrito no envía Authorization ni X-Carrito-Id', async () => {
+    const f = simularFetch({ cuerpo: {} })
+    await pedir('GET', '/home')
+    expect(llamada(f).cabeceras.Authorization).toBeUndefined()
+    expect(llamada(f).cabeceras['X-Carrito-Id']).toBeUndefined()
+  })
+
+  it('con sesión agrega Authorization: Bearer <token>', async () => {
+    guardarSesion({ token: 'jwt.de.prueba', usuario: USUARIO })
+    const f = simularFetch({ cuerpo: USUARIO })
+    await pedir('GET', '/auth/yo')
+    expect(llamada(f).cabeceras.Authorization).toBe('Bearer jwt.de.prueba')
+  })
+
+  it('con carrito anónimo agrega X-Carrito-Id', async () => {
+    guardarCarritoAnonimo(ID_CARRITO)
+    const f = simularFetch({ cuerpo: { id: ID_CARRITO, items: [] } })
+    await pedir('GET', '/carrito')
+    expect(llamada(f).cabeceras['X-Carrito-Id']).toBe(ID_CARRITO)
+  })
+
+  it('envía el cuerpo como JSON', async () => {
+    const f = simularFetch({ status: 201, cuerpo: { id: 'o-1' } })
+    await procesarOrdenWeb({ despacho: { nombre: 'Ana' } })
+    const { opciones, cabeceras } = llamada(f)
+    expect(opciones.method).toBe('POST')
+    expect(cabeceras['Content-Type']).toBe('application/json')
+    expect(JSON.parse(opciones.body)).toEqual({ medio_pago: 'mock', despacho: { nombre: 'Ana' } })
+  })
+})
+
+describe('Carrito anónimo', () => {
+  it('guarda el X-Carrito-Id que devuelve la API cuando no hay sesión', async () => {
+    simularFetch({ cuerpo: { id: ID_CARRITO, items: [] }, cabeceras: { 'X-Carrito-Id': ID_CARRITO } })
+    await agregarAlCarrito('p-1', 1)
+    expect(obtenerCarritoAnonimo()).toBe(ID_CARRITO)
+  })
+
+  it('con sesión no guarda un id anónimo', async () => {
+    guardarSesion({ token: 'jwt', usuario: USUARIO })
+    simularFetch({ cuerpo: { id: 'c-usuario', items: [] }, cabeceras: { 'X-Carrito-Id': ID_CARRITO } })
+    await agregarAlCarrito('p-1', 1)
+    expect(obtenerCarritoAnonimo()).toBeNull()
+  })
+
+  it('sin sesión ni carrito, fetchCarrito no hace la petición', async () => {
+    const f = simularFetch()
+    expect(await fetchCarrito()).toMatchObject({ id: null, items: [] })
+    expect(f).not.toHaveBeenCalled()
+  })
+
+  it('descarta un id anónimo que la API ya no reconoce', async () => {
+    guardarCarritoAnonimo(ID_CARRITO)
+    simularFetch({ cuerpo: { id: null, items: [], total_unidades: 0, subtotal: 0 } })
+    await fetchCarrito()
+    expect(obtenerCarritoAnonimo()).toBeNull()
+  })
+
+  it('fusionarCarrito envía token e id anónimo y luego olvida el id', async () => {
+    guardarSesion({ token: 'jwt', usuario: USUARIO })
+    guardarCarritoAnonimo(ID_CARRITO)
+    const f = simularFetch({ cuerpo: { id: 'c-usuario', items: [] } })
+    await fusionarCarrito()
+    expect(llamada(f).url).toBe('/api/carrito/fusionar')
+    expect(llamada(f).cabeceras).toMatchObject({ Authorization: 'Bearer jwt', 'X-Carrito-Id': ID_CARRITO })
+    expect(obtenerCarritoAnonimo()).toBeNull()
+  })
+
+  it('fusionarCarrito sin carrito anónimo no hace nada', async () => {
+    const f = simularFetch()
+    expect(await fusionarCarrito()).toBeNull()
+    expect(f).not.toHaveBeenCalled()
+  })
+})
+
+describe('ErrorApi', () => {
+  it('lanza ErrorApi con status, mensaje y los campos extra (409 del carrito)', async () => {
+    simularFetch({ status: 409, cuerpo: { error: 'No hay stock suficiente', stock_disponible: 3 } })
+    const err = await agregarAlCarrito('p-1', 5).catch((e) => e)
+    expect(err).toBeInstanceOf(ErrorApi)
+    expect(err.status).toBe(409)
+    expect(err.message).toBe('No hay stock suficiente')
+    expect(err.detalle).toEqual({ stock_disponible: 3 })
+  })
+
+  it('conserva la lista de productos del 409 del checkout', async () => {
+    const productos = [{ producto_id: 'p-1', nombre: 'Taza', solicitado: 3, disponible: 1 }]
+    simularFetch({ status: 409, cuerpo: { error: 'Stock insuficiente para completar la compra', productos } })
+    const err = await procesarOrdenWeb({ despacho: {} }).catch((e) => e)
+    expect(err.detalle.productos).toEqual(productos)
+  })
+
+  it('un error de red se convierte en ErrorApi con status 0', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      throw new TypeError('Failed to fetch')
+    }))
+    const err = await pedir('GET', '/home').catch((e) => e)
+    expect(err).toBeInstanceOf(ErrorApi)
+    expect(err.status).toBe(0)
+  })
+
+  it('un cuerpo de error que no es JSON igual produce un mensaje', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('Bad Gateway', { status: 502 })))
+    const err = await pedir('GET', '/home').catch((e) => e)
+    expect(err.status).toBe(502)
+    expect(err.message).toMatch(/502/)
+  })
+
+  it('fetchProductoById devuelve null ante un 404', async () => {
+    simularFetch({ status: 404, cuerpo: { error: 'Producto no encontrado' } })
+    expect(await fetchProductoById('no-existe')).toBeNull()
+  })
+
+  it('las funciones del panel de admin rechazan con un ErrorApi 501 claro', async () => {
+    const f = simularFetch()
+    const err = await fetchProductos().catch((e) => e)
+    expect(err).toBeInstanceOf(ErrorApi)
+    expect(err.status).toBe(501)
+    expect(err.message).toMatch(/migrando a la API propia/)
+    expect(f).not.toHaveBeenCalled()
+  })
+})
+
+describe('Cierre de sesión ante 401', () => {
+  it('un 401 con sesión borra token y usuario y avisa a los suscriptores', async () => {
+    guardarSesion({ token: 'jwt-vencido', usuario: USUARIO })
+    const aviso = vi.fn()
+    const anular = alCerrarSesion(aviso)
+    simularFetch({ status: 401, cuerpo: { error: 'Token inválido o expirado' } })
+
+    const err = await pedir('GET', '/auth/yo').catch((e) => e)
+    anular()
+
+    expect(err.status).toBe(401)
+    expect(obtenerToken()).toBeNull()
+    expect(obtenerUsuario()).toBeNull()
+    expect(aviso).toHaveBeenCalledTimes(1)
+  })
+
+  it('un 401 sin sesión (credenciales incorrectas) no avisa cierre de sesión', async () => {
+    const aviso = vi.fn()
+    const anular = alCerrarSesion(aviso)
+    simularFetch({ status: 401, cuerpo: { error: 'Correo o contraseña incorrectos' } })
+    const err = await pedir('POST', '/auth/login', { cuerpo: {} }).catch((e) => e)
+    anular()
+    expect(err.message).toBe('Correo o contraseña incorrectos')
+    expect(aviso).not.toHaveBeenCalled()
+  })
+})
+
+describe('fetchProductosPublicos', () => {
+  it('sin texto usa /productos con los filtros del servidor', async () => {
+    const f = simularFetch({ cuerpo: { items: [], total: 0, pagina: 2, limite: 12, totalPaginas: 0 } })
+    await fetchProductosPublicos({
+      categoriaId: 'cat-1',
+      temporada: 'Navidad',
+      precioMax: 15000,
+      soloEnStock: true,
+      orden: 'precio_asc',
+      pagina: 2
+    })
+    const url = new URL(llamada(f).url, 'http://x')
+    expect(url.pathname).toBe('/api/productos')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      categoria: 'cat-1',
+      temporada: 'Navidad',
+      precio_max: '15000',
+      en_stock: 'true',
+      orden: 'precio_asc',
+      pagina: '2',
+      limite: '12'
+    })
+  })
+
+  it('"Todas" y los valores por defecto no se envían como filtro', async () => {
+    const f = simularFetch({ cuerpo: { items: [] } })
+    await fetchProductosPublicos({ categoriaId: 'Todas', temporada: 'Todas' })
+    expect(llamada(f).url).toBe('/api/productos?pagina=1&limite=12')
+  })
+
+  it('con texto de 2 o más caracteres usa /buscar con los mismos filtros', async () => {
+    const f = simularFetch({ cuerpo: { items: [] } })
+    await fetchProductosPublicos({ busqueda: '  taza ', temporada: 'Verano', orden: 'relevancia' })
+    const url = new URL(llamada(f).url, 'http://x')
+    expect(url.pathname).toBe('/api/buscar')
+    expect(url.searchParams.get('q')).toBe('taza')
+    expect(url.searchParams.get('temporada')).toBe('Verano')
+    expect(url.searchParams.get('orden')).toBe('relevancia')
+  })
+
+  it('con texto de 1 carácter no busca (el servidor exige 2)', async () => {
+    const f = simularFetch({ cuerpo: { items: [] } })
+    await fetchProductosPublicos({ busqueda: 't' })
+    expect(new URL(llamada(f).url, 'http://x').pathname).toBe('/api/productos')
+  })
+})

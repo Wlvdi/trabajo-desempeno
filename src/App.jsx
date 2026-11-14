@@ -10,6 +10,7 @@ import StoreNavbar from './components/store/StoreNavbar'
 import StoreFooter from './components/store/StoreFooter'
 import CartDrawer from './components/store/CartDrawer'
 import AuthModal from './components/store/AuthModal'
+import AvisoTienda from './components/store/AvisoTienda'
 
 // Vistas de la Tienda
 import HomeStoreView from './views/store/HomeStoreView'
@@ -45,6 +46,7 @@ function StoreLayout({ children }) {
       <StoreFooter />
       <CartDrawer />
       <AuthModal />
+      <AvisoTienda />
     </div>
   )
 }

@@ -15,8 +15,33 @@ import {
   Sparkles,
   Check
 } from 'lucide-react'
-import { fetchProductosPublicos, fetchCategorias } from '../../services/api'
+import { fetchProductosPublicos, fetchCategorias, PRODUCTOS_POR_PAGINA } from '../../services/api'
 import { useCart } from '../../context/CartContext'
+
+/** Tope del deslizador de precio: en este valor el filtro queda "sin límite". */
+const PRECIO_TOPE = 30000
+/** Espera (ms) tras el último tecleo antes de buscar en el servidor. */
+const ESPERA_BUSQUEDA_MS = 300
+
+/**
+ * Números de página a mostrar (con "…" cuando hay muchas páginas).
+ * @param {number} actual
+ * @param {number} total
+ * @returns {(number | '…')[]}
+ */
+function paginasVisibles(actual, total) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const paginas = new Set([1, total, actual, actual - 1, actual + 1])
+  if (actual <= 3) [2, 3, 4].forEach((p) => paginas.add(p))
+  if (actual >= total - 2) [total - 3, total - 2, total - 1].forEach((p) => paginas.add(p))
+  const ordenadas = [...paginas].filter((p) => p >= 1 && p <= total).sort((a, b) => a - b)
+  const resultado = []
+  ordenadas.forEach((p, i) => {
+    if (i > 0 && p - ordenadas[i - 1] > 1) resultado.push('…')
+    resultado.push(p)
+  })
+  return resultado
+}
 
 export default function CatalogStoreView() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -26,12 +51,17 @@ export default function CatalogStoreView() {
   const [busqueda, setBusqueda] = useState(searchParams.get('q') || '')
   const [categoriaId, setCategoriaId] = useState(searchParams.get('categoriaId') || 'Todas')
   const [temporada, setTemporada] = useState(searchParams.get('temporada') || 'Todas')
-  const [precioMax, setPrecioMax] = useState(25000)
+  const [precioMax, setPrecioMax] = useState(PRECIO_TOPE)
   const [soloEnStock, setSoloEnStock] = useState(false)
   const [orden, setOrden] = useState('destacado')
+  // Texto que realmente se busca (con espera tras el último tecleo).
+  const [busquedaAplicada, setBusquedaAplicada] = useState(searchParams.get('q') || '')
 
-  // Datos
+  // Datos (una página del servidor)
   const [productos, setProductos] = useState([])
+  const [totalProductos, setTotalProductos] = useState(0)
+  const [totalPages, setTotalPages] = useState(1)
+  const [errorCarga, setErrorCarga] = useState(null)
   const [categorias, setCategorias] = useState([])
   const [loading, setLoading] = useState(true)
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false)
@@ -44,9 +74,8 @@ export default function CatalogStoreView() {
     simulatedPayloadKb: 0
   })
 
-  // Paginación
+  // Paginación del servidor (pagina y limite)
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 6
 
   const temporadasLista = [
     'Todas',
@@ -76,49 +105,74 @@ export default function CatalogStoreView() {
     if (temp !== null) setTemporada(temp)
   }, [searchParams])
 
-  // Cargar y Filtrar Productos
-  const loadData = async () => {
+  // Búsqueda: espera ESPERA_BUSQUEDA_MS tras el último tecleo y solo busca
+  // desde 2 caracteres (el servidor exige q de 2 a 100 caracteres).
+  useEffect(() => {
+    const texto = busqueda.trim()
+    const temporizador = setTimeout(() => setBusquedaAplicada(texto.length >= 2 ? texto : ''), ESPERA_BUSQUEDA_MS)
+    return () => clearTimeout(temporizador)
+  }, [busqueda])
+
+  const buscando = busquedaAplicada.length >= 2
+  // Con texto de búsqueda el orden por defecto es "relevancia".
+  const ordenEfectivo = buscando && orden === 'destacado' ? 'relevancia' : orden
+
+  // Al cambiar cualquier filtro se vuelve a la página 1.
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [busquedaAplicada, categoriaId, temporada, precioMax, soloEnStock, orden])
+
+  // Cargar una página de productos desde el servidor.
+  useEffect(() => {
+    let cancelado = false
     setLoading(true)
+    setErrorCarga(null)
     const startTime = performance.now()
 
-    try {
-      const data = await fetchProductosPublicos({
-        busqueda,
-        categoriaId,
-        temporada,
-        precioMax: Number(precioMax),
-        soloEnStock,
-        orden
+    fetchProductosPublicos({
+      busqueda: busquedaAplicada,
+      categoriaId,
+      temporada,
+      precioMax: precioMax < PRECIO_TOPE ? Number(precioMax) : undefined,
+      soloEnStock,
+      orden: ordenEfectivo,
+      pagina: currentPage,
+      limite: PRODUCTOS_POR_PAGINA
+    })
+      .then((data) => {
+        if (cancelado) return
+        const latency = Math.round(performance.now() - startTime)
+        const payloadEst = Math.round((JSON.stringify(data).length / 1024) * 10) / 10
+        setProductos(data.items)
+        setTotalProductos(data.total)
+        setTotalPages(Math.max(1, data.totalPaginas))
+        setBenchmarkMetrics({
+          latencyMs: latency,
+          totalRecords: data.total,
+          filteredRecords: data.items.length,
+          simulatedPayloadKb: payloadEst
+        })
       })
-
-      const endTime = performance.now()
-      const latency = Math.round(endTime - startTime)
-      const payloadEst = Math.round((JSON.stringify(data).length / 1024) * 10) / 10
-
-      setProductos(data)
-      setCurrentPage(1)
-      setBenchmarkMetrics({
-        latencyMs: latency,
-        totalRecords: 12, // tamaño de catálogo maestro
-        filteredRecords: data.length,
-        simulatedPayloadKb: payloadEst
+      .catch((err) => {
+        if (cancelado) return
+        console.error('Error cargando catálogo:', err)
+        setErrorCarga(err.message)
+        setProductos([])
+        setTotalProductos(0)
+        setTotalPages(1)
       })
-    } catch (err) {
-      console.error('Error cargando catálogo:', err)
-    } finally {
-      setLoading(false)
+      .finally(() => !cancelado && setLoading(false))
+
+    return () => {
+      cancelado = true
     }
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [busqueda, categoriaId, temporada, precioMax, soloEnStock, orden])
+  }, [busquedaAplicada, categoriaId, temporada, precioMax, soloEnStock, ordenEfectivo, currentPage])
 
   const handleResetFilters = () => {
     setBusqueda('')
     setCategoriaId('Todas')
     setTemporada('Todas')
-    setPrecioMax(25000)
+    setPrecioMax(PRECIO_TOPE)
     setSoloEnStock(false)
     setOrden('destacado')
     setSearchParams({})
@@ -132,11 +186,9 @@ export default function CatalogStoreView() {
     }).format(Number(val) || 0)
   }
 
-  // Paginación lógica
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = productos.slice(indexOfFirstItem, indexOfLastItem)
-  const totalPages = Math.ceil(productos.length / itemsPerPage) || 1
+  // La página actual ya viene del servidor.
+  const currentItems = productos
+  const textoPrecio = precioMax < PRECIO_TOPE ? formatCLP(precioMax) : 'Sin límite'
 
   return (
     <div className="space-y-6 pb-16">
@@ -146,7 +198,7 @@ export default function CatalogStoreView() {
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4 text-amber-400 animate-pulse" />
           <span className="font-semibold text-white">Métrica de Rendimiento [Página 2: Catálogo Completo / Heavy Load]:</span>
-          <span>Consulta masiva con filtros de cliente, ordenamiento y paginación</span>
+          <span>Filtros, ordenamiento y paginación en el servidor (GET /api/productos o /api/buscar)</span>
         </div>
         <div className="flex items-center gap-2 font-mono text-[11px]">
           <span className="bg-slate-800 px-2 py-0.5 rounded text-amber-300">
@@ -168,7 +220,7 @@ export default function CatalogStoreView() {
             Catálogo de Productos
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Explora {productos.length} insumos y productos listos para personalizar en Chile.
+            Explora {totalProductos} insumos y productos listos para personalizar en Chile.
           </p>
         </div>
 
@@ -179,7 +231,7 @@ export default function CatalogStoreView() {
               type="text"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por nombre, SKU o tipo..."
+              placeholder="Buscar por nombre o descripción..."
               className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
             />
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
@@ -280,12 +332,12 @@ export default function CatalogStoreView() {
           <div className="space-y-2 border-t border-slate-100 pt-4">
             <div className="flex justify-between items-center text-xs font-bold text-slate-800 uppercase tracking-wider">
               <span>Precio Máximo</span>
-              <span className="text-indigo-600 font-mono font-black">{formatCLP(precioMax)}</span>
+              <span className="text-indigo-600 font-mono font-black">{textoPrecio}</span>
             </div>
             <input
               type="range"
               min="1000"
-              max="25000"
+              max={PRECIO_TOPE}
               step="500"
               value={precioMax}
               onChange={(e) => setPrecioMax(Number(e.target.value))}
@@ -293,7 +345,7 @@ export default function CatalogStoreView() {
             />
             <div className="flex justify-between text-[10px] text-slate-400 font-mono">
               <span>$1.000</span>
-              <span>$25.000</span>
+              <span>Sin límite</span>
             </div>
           </div>
 
@@ -317,7 +369,9 @@ export default function CatalogStoreView() {
           {/* Barra Superior de Ordenación y Conteo */}
           <div className="bg-white px-5 py-3.5 rounded-2xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
             <div className="text-slate-600 font-medium">
-              Mostrando <strong className="text-slate-900">{productos.length}</strong> productos
+              Mostrando <strong className="text-slate-900">{productos.length}</strong> de{' '}
+              <strong className="text-slate-900">{totalProductos}</strong> productos
+              {totalPages > 1 && <> (página {currentPage} de {totalPages})</>}
             </div>
 
             <div className="flex items-center gap-2">
@@ -327,7 +381,7 @@ export default function CatalogStoreView() {
                 onChange={(e) => setOrden(e.target.value)}
                 className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-indigo-600"
               >
-                <option value="destacado">Destacados de Temporada</option>
+                <option value="destacado">{buscando ? 'Más relevantes' : 'Destacados de Temporada'}</option>
                 <option value="precio_asc">Precio: Menor a Mayor</option>
                 <option value="precio_desc">Precio: Mayor a Menor</option>
                 <option value="nombre_asc">Nombre: A - Z</option>
@@ -347,6 +401,10 @@ export default function CatalogStoreView() {
                   <div className="h-4 bg-slate-200 rounded w-1/2" />
                 </div>
               ))}
+            </div>
+          ) : errorCarga ? (
+            <div role="alert" className="bg-rose-50 rounded-3xl border border-rose-200 p-8 text-center text-xs text-rose-800 font-semibold">
+              No se pudo cargar el catálogo: {errorCarga}
             </div>
           ) : currentItems.length === 0 ? (
             <div className="bg-white rounded-3xl border border-slate-200 p-12 text-center space-y-4">
@@ -461,7 +519,9 @@ export default function CatalogStoreView() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+              {paginasVisibles(currentPage, totalPages).map((page, i) => page === '…' ? (
+                <span key={`salto-${i}`} className="px-1 text-slate-400">…</span>
+              ) : (
                 <button
                   key={page}
                   type="button"
@@ -542,12 +602,12 @@ export default function CatalogStoreView() {
               <div className="space-y-2">
                 <div className="flex justify-between text-xs font-bold text-slate-800">
                   <span>Precio Máximo:</span>
-                  <span className="text-indigo-600">{formatCLP(precioMax)}</span>
+                  <span className="text-indigo-600">{textoPrecio}</span>
                 </div>
                 <input
                   type="range"
                   min="1000"
-                  max="25000"
+                  max={PRECIO_TOPE}
                   step="500"
                   value={precioMax}
                   onChange={(e) => setPrecioMax(Number(e.target.value))}
@@ -574,7 +634,7 @@ export default function CatalogStoreView() {
                 onClick={() => setIsMobileFilterOpen(false)}
                 className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold"
               >
-                Ver {productos.length} Resultados
+                Ver {totalProductos} Resultados
               </button>
               <button
                 type="button"

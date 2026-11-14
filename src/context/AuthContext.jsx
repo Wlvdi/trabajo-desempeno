@@ -1,160 +1,79 @@
 // src/context/AuthContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react'
-import { getSupabase } from '../services/supabase'
+// Sesión del usuario contra la API propia (JWT).
+// - Al cargar la app valida el token guardado con GET /api/auth/yo.
+// - Al iniciar sesión o registrarse, si había carrito anónimo, lo fusiona con
+//   el del usuario (POST /api/carrito/fusionar) ANTES de fijar el usuario,
+//   para que el carrito se recargue ya fusionado.
+// - Si la API responde 401 con sesión, api.js cierra la sesión local y este
+//   contexto se entera por alCerrarSesion.
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { ErrorApi, fetchUsuarioActual, fusionarCarrito, iniciarSesion, registrarUsuario } from '../services/api'
+import {
+  alCerrarSesion,
+  cerrarSesionLocal,
+  guardarSesion,
+  guardarUsuario,
+  obtenerToken,
+  obtenerUsuario
+} from '../services/sesion'
 
 const AuthContext = createContext()
 
-const STORAGE_USER_KEY = 'subligol_auth_user'
-
 export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_USER_KEY)
-      return saved ? JSON.parse(saved) : null
-    } catch {
-      return null
-    }
-  })
-
-  const [loading, setLoading] = useState(true)
+  // Se pinta de inmediato con el usuario guardado; luego se valida contra la API.
+  const [currentUser, setCurrentUser] = useState(() => (obtenerToken() ? obtenerUsuario() : null))
+  const [loading, setLoading] = useState(Boolean(obtenerToken()))
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const [authModalTab, setAuthModalTab] = useState('login') // 'login' | 'register'
 
-  useEffect(() => {
-    const supabase = getSupabase()
-    if (supabase) {
-      // Verificar sesión activa en Supabase
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          const userObj = {
-            id: session.user.id,
-            email: session.user.email,
-            nombre: session.user.user_metadata?.nombre || session.user.email.split('@')[0],
-            rol: 'cliente'
-          }
-          setCurrentUser(userObj)
-          localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(userObj))
-        }
-        setLoading(false)
-      }).catch(() => setLoading(false))
+  // Cierre de sesión forzado por la API (token vencido o inválido).
+  useEffect(() => alCerrarSesion(() => setCurrentUser(null)), [])
 
-      // Escuchar cambios de estado en Supabase
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        if (session?.user) {
-          const userObj = {
-            id: session.user.id,
-            email: session.user.email,
-            nombre: session.user.user_metadata?.nombre || session.user.email.split('@')[0],
-            rol: 'cliente'
-          }
-          setCurrentUser(userObj)
-          localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(userObj))
-        } else {
-          setCurrentUser(null)
-          localStorage.removeItem(STORAGE_USER_KEY)
+  // Validar la sesión guardada al cargar la app.
+  useEffect(() => {
+    if (!obtenerToken()) return
+    let cancelado = false
+    fetchUsuarioActual()
+      .then((usuario) => {
+        if (cancelado) return
+        guardarUsuario(usuario)
+        setCurrentUser(usuario)
+      })
+      .catch((err) => {
+        // Un 401 ya cerró la sesión en api.js; un error de red conserva la sesión local.
+        if (!(err instanceof ErrorApi) || err.status !== 401) {
+          console.warn('No se pudo validar la sesión:', err.message)
         }
       })
-
-      return () => {
-        subscription?.unsubscribe()
-      }
-    } else {
-      setLoading(false)
+      .finally(() => !cancelado && setLoading(false))
+    return () => {
+      cancelado = true
     }
   }, [])
 
-  const login = async (email, password) => {
-    const supabase = getSupabase()
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email.trim(),
-          password
-        })
-        if (error) throw error
-
-        const userObj = {
-          id: data.user.id,
-          email: data.user.email,
-          nombre: data.user.user_metadata?.nombre || email.split('@')[0],
-          rol: 'cliente'
-        }
-        setCurrentUser(userObj)
-        localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(userObj))
-        setIsAuthModalOpen(false)
-        return { success: true, user: userObj }
-      } catch (err) {
-        console.warn('Fallo login en Supabase, intentando fallback local:', err)
-        // Si falla por credenciales o red, podemos permitir login en modo demo si el usuario lo desea
-        throw err
-      }
-    } else {
-      // Modo local simulado
-      const simulatedUser = {
-        id: `usr-${Date.now()}`,
-        email: email.trim(),
-        nombre: email.split('@')[0],
-        rol: email.includes('admin') ? 'admin' : 'cliente'
-      }
-      setCurrentUser(simulatedUser)
-      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(simulatedUser))
-      setIsAuthModalOpen(false)
-      return { success: true, user: simulatedUser }
+  /** Guarda la sesión, fusiona el carrito anónimo y fija el usuario. */
+  const abrirSesion = useCallback(async ({ usuario, token }) => {
+    guardarSesion({ usuario, token })
+    try {
+      await fusionarCarrito()
+    } catch (err) {
+      // La sesión es válida aunque la fusión falle; el carrito anónimo se pierde.
+      console.warn('No se pudo fusionar el carrito anónimo:', err.message)
     }
-  }
+    setCurrentUser(usuario)
+    setIsAuthModalOpen(false)
+    return { success: true, user: usuario }
+  }, [])
 
-  const register = async (nombre, email, password) => {
-    const supabase = getSupabase()
-    if (supabase) {
-      try {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: {
-            data: { nombre: nombre.trim() }
-          }
-        })
-        if (error) throw error
+  const login = async (email, password) => abrirSesion(await iniciarSesion(email.trim(), password))
 
-        const userObj = {
-          id: data.user?.id || `usr-${Date.now()}`,
-          email: email.trim(),
-          nombre: nombre.trim(),
-          rol: 'cliente'
-        }
-        setCurrentUser(userObj)
-        localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(userObj))
-        setIsAuthModalOpen(false)
-        return { success: true, user: userObj }
-      } catch (err) {
-        throw err
-      }
-    } else {
-      // Modo local simulado
-      const simulatedUser = {
-        id: `usr-${Date.now()}`,
-        email: email.trim(),
-        nombre: nombre.trim(),
-        rol: 'cliente'
-      }
-      setCurrentUser(simulatedUser)
-      localStorage.setItem(STORAGE_USER_KEY, JSON.stringify(simulatedUser))
-      setIsAuthModalOpen(false)
-      return { success: true, user: simulatedUser }
-    }
-  }
+  const register = async (nombre, email, password) =>
+    abrirSesion(await registrarUsuario(nombre.trim(), email.trim(), password))
 
   const logout = async () => {
-    const supabase = getSupabase()
-    if (supabase) {
-      try {
-        await supabase.auth.signOut()
-      } catch (err) {
-        console.warn('Error al desloguear de Supabase:', err)
-      }
-    }
+    // El JWT no se invalida en el servidor: basta con olvidarlo.
+    cerrarSesionLocal()
     setCurrentUser(null)
-    localStorage.removeItem(STORAGE_USER_KEY)
   }
 
   const openAuthModal = (tab = 'login') => {
@@ -172,6 +91,7 @@ export function AuthProvider({ children }) {
         currentUser,
         loading,
         isAuthenticated: Boolean(currentUser),
+        isAdmin: currentUser?.rol === 'admin',
         login,
         register,
         logout,

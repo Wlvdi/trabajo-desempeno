@@ -21,31 +21,44 @@ desempeño bajo carga.
 ## Estado actual
 
 ### Stack
-- Frontend: React 18 + Vite 6 (JavaScript, `.jsx`), Tailwind CSS, react-router.
-- Datos: el navegador consulta **Supabase** directamente (`src/services/api.js`
-  y `src/context/AuthContext.jsx`). Si Supabase no está configurado, usa datos
-  de ejemplo guardados en `localStorage`.
-- Base de datos: PostgreSQL en Supabase; scripts SQL en `database/`.
+- Frontend: React 18 + Vite 6 (JavaScript, `.jsx`), Tailwind CSS, react-router,
+  en `src/`. Consume la API propia mediante `src/services/api.js`; ya no usa Supabase.
+- Backend: Node.js + Express 5 en Docker (`backend/`): catálogo, búsqueda,
+  auth (argon2id + JWT), carrito persistente, checkout con pago simulado,
+  órdenes y métricas con prom-client en `/metrics`.
+- Base de datos: PostgreSQL 16 en Docker, con migraciones y seed determinista
+  en `backend/`.
+- Monitoreo: Prometheus, Grafana y exporters en `docker-compose.yml`.
 - Analítica: GA4 (gtag.js) y web-vitals en `src/services/analytics.js`.
-- Carga: scripts preliminares en `load_tests/` (k6 y Locust).
-- Aún no hay: backend propio, Docker, Prometheus/Grafana, tests automáticos ni deploy.
+- Pago: **simulado** (medio_pago `mock`, sin llamar a Transbank). La
+  integración con el sandbox real de Webpay será un commit posterior.
+- Panel de administración (`/admin`): requiere rol admin y muestra
+  "Panel en migración" hasta que existan sus endpoints.
 
 ### Requisitos
-- Node.js 20 o superior
-- (Opcional) Proyecto Supabase con los scripts de `database/` ejecutados
+- Node.js 22 o superior
+- Docker y Docker Compose
 - (Opcional) k6
 
-### Cómo levantar el proyecto hoy
-1. Instalar dependencias: `npm install`
-2. Copiar `.env.example` a `.env.local` y completar `VITE_SUPABASE_URL`,
-   `VITE_SUPABASE_ANON_KEY` y `VITE_GA_MEASUREMENT_ID`.
-   Sin credenciales de Supabase el sitio funciona en modo local con datos de ejemplo.
-3. Servidor de desarrollo: `npm run dev` (http://localhost:5173)
-4. Build de producción: `npm run build`
+### Cómo levantar el proyecto
+1. Copiar `.env.example` a `.env` y completar las variables
+   (`POSTGRES_PASSWORD`, `JWT_SECRETO`, `SEED_CONTRASENA_*`, `PAGO_MOCK=true`).
+2. API, base de datos y monitoreo: `docker compose up -d --build`
+3. Migraciones y seed: `cd backend && npm ci && npm run migrate && npm run seed`
+4. Frontend: `npm install && npm run dev` (http://localhost:5173). Vite
+   reenvía `/api` a http://localhost:3000.
+5. Build de producción del frontend: `npm run build`
+
+### Tests
+- `npm test` en la raíz: tests del backend (requieren la base de datos en
+  Docker) y del frontend (`src/**/*.test.js`, con fetch simulado).
+- Solo frontend: `npm run test:frontend`.
 
 ### Estructura actual
 - `src/` sitio web (tienda en `src/views/store/`, panel admin en `src/views/`)
-- `database/` scripts SQL de Supabase (tablas, triggers, vistas, RLS, seed)
+- `backend/` API REST, migraciones, seed y tests
+- `infra/` configuración de Prometheus y Grafana
+- `carga/` datos y scripts de k6
 - `load_tests/` scripts preliminares de k6 y Locust
 - `guia_desempeno_sistemas.pdf` guía del trabajo
 
