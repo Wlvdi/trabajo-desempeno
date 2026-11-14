@@ -133,7 +133,7 @@ DEPLOY: no
 ==================================================================
 ID: 0004
 FECHA: 14-11-26 HORA: 14:47 (America/Santiago)
-INTEGRANTE: Rdonosokk
+INTEGRANTE: Rodrigo
 AGENTE: Claude Code
 MODELO: Opus 5.5
 ------------------------------------------------------------------
@@ -228,7 +228,7 @@ DEPLOY: no
 ==================================================================
 ID: 0005
 FECHA: 14-11-26 HORA: 15:25 (America/Santiago)
-INTEGRANTE: Rdonosokk
+INTEGRANTE: Rodrigo
 AGENTE: Claude Code
 MODELO: Opus 5.5
 ------------------------------------------------------------------
@@ -332,7 +332,7 @@ RESUMEN DE LO GENERADO:
   400), login (200 cliente y admin, 401 con el mismo mensaje para clave
   incorrecta y correo inexistente) y yo (200; 401 sin token, alterado y
   alg none).
-COMMIT: feat(auth): registro e inicio de sesión con argon2 y JWT
+COMMIT: 586a24d feat(auth): registro e inicio de sesión con argon2 y JWT
 DEPLOY: no
 ==================================================================
 
@@ -371,6 +371,6 @@ RESUMEN DE LO GENERADO:
   incluye 10 "agregar" concurrentes y fusión de carritos).
 - Build: npm run build OK; docker compose up -d --build y curl
   (agregar anónimo, ver, límite de unidades, login y fusionar) OK.
-COMMIT: pendiente
+COMMIT: 09c6e98 feat(carrito): carrito persistente en base de datos
 DEPLOY: no
 ==================================================================
