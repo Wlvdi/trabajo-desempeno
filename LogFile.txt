@@ -3,8 +3,7 @@ LOGFILE – INFB8091 Desempeño de Sistemas (UTEM, 2026-2)
 Proyecto: [COMPLETAR: nombre del comercio]
 Criterio de registro: se anotan los prompts significativos
 (arquitectura, funcionalidades completas, GA4/k6/observabilidad,
-decisiones de diseño, bugs relevantes). Los prompts completos
-sin filtrar están en LogFile_completo.txt (generado por hook).
+decisiones de diseño, bugs relevantes).
 ==================================================================
 
 ==================================================================

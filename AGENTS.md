@@ -4,7 +4,7 @@
 - Sitio: [subligol] – e-commerce de [sublimacio y estampados].
 - Objetivo académico: construir el sitio, instrumentarlo con GA4,
   generar carga sintética (k6) y analizar su desempeño.
-- Enunciado: docs/enunciado.pdf (leerlo antes de proponer cambios).
+- Enunciado: guia_desempeno_sistemas.pdf (leerlo antes de proponer cambios).
 
 ## 2. Stack
 - Frontend: React + Vite (TypeScript) + gtag.js (GA4) + web-vitals.
@@ -45,9 +45,6 @@ de desempeño.
    proponer arreglos.
 10. Toda cifra que me entregues debe poder salir de un reporte o script
     reproducible; no inventes datos.
-11. Los prompts completos se guardan automáticamente en
-    LogFile_completo.txt mediante un hook. No los copies ahí a mano.
-    LogFile.txt es solo para los significativos.
 
 ## 5. Uso de modelos
 - Claude Opus 5.5 → arquitectura, análisis de resultados, depuración compleja.
