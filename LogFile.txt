@@ -565,6 +565,6 @@ RESUMEN DE LO GENERADO:
   levantado con los 5 objetivos de Prometheus en "up"; tráfico de humo
   de ~90 s y las 35 consultas del dashboard con datos; Grafana con
   datasource OK y dashboard como inicio.
-COMMIT: pendiente
+COMMIT: 33b4c1a feat(metricas): prom-client y Prometheus/Grafana/exporters en compose
 DEPLOY: no
 ==================================================================
