@@ -1,0 +1,55 @@
+==================================================================
+LOGFILE – INFB8091 Desempeño de Sistemas (UTEM, 2026-2)
+Proyecto: [COMPLETAR: nombre del comercio]
+Criterio de registro: se anotan los prompts significativos
+(arquitectura, funcionalidades completas, GA4/k6/observabilidad,
+decisiones de diseño, bugs relevantes). Los prompts completos
+sin filtrar están en LogFile_completo.txt (generado por hook).
+==================================================================
+
+==================================================================
+ID: 0001
+FECHA: [COMPLETAR: 14-11-26] HORA: [COMPLETAR: HH:MM] (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Adjunto el enunciado del trabajo (docs/enunciado.pdf). Soy estudiante
+del curso INFB8091 Desempeño de Sistemas (UTEM). Elegí la Opción 1:
+e-commerce. Mi comercio se llamará [nombre], dedicado a [rubro].
+[Si tienes logo, paleta o fotos, menciónalos aquí.]
+
+Stack: React + Vite (TypeScript) en el frontend; Node.js + Express +
+PostgreSQL en Docker en el backend; Prometheus + Grafana para
+observabilidad; k6 para las pruebas de carga.
+
+Antes de escribir código de la aplicación, necesito que:
+
+1. Revises el AGENTS.md que ya existe en el repositorio y me propongas
+   mejoras si ves algo que falte o contradiga el enunciado.
+2. Crees CLAUDE.md con una sola línea: "Lee y sigue AGENTS.md".
+3. Crees LogFile.txt con un encabezado que explique el criterio de
+   registro (solo prompts significativos) y registres este mismo
+   prompt como entrada 0001, con fecha y hora en America/Santiago,
+   el prompt completo, el resumen de lo generado y el modelo usado.
+4. Crees README.md, .gitignore (excluyendo .env, node_modules y
+   archivos pesados de carga) y .env.example.
+5. Crees la estructura de carpetas: frontend/, backend/, infra/,
+   carga/k6/, carga/resultados/, analisis/, docs/.
+6. Inicialices Git y conectes el remoto [URL del repositorio en GitHub].
+
+Explícame primero lo que vas a crear y espera mi confirmación.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: diagnóstico del sitio existente (stack actual, funcionalidades,
+  brechas frente al enunciado) y configuración del flujo de trabajo
+  con el agente.
+- Archivos: CLAUDE.md (nuevo), LogFile.txt (nuevo), AGENTS.md (revisado),
+  y los que faltaran entre README.md, .gitignore y .env.example.
+- Instalaciones: ninguna
+- Tests: no aplica
+- Build: no aplica
+COMMIT: a1b2c3d chore: configuración del agente, LogFile y archivos base
+DEPLOY: no
+==================================================================

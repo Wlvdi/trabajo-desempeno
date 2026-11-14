@@ -1,0 +1,65 @@
+# AGENTS.md – Proyecto INFB8091 Desempeño de Sistemas (UTEM, 2026-2)
+
+## 1. Contexto
+- Sitio: [subligol] – e-commerce de [sublimacio y estampados].
+- Objetivo académico: construir el sitio, instrumentarlo con GA4,
+  generar carga sintética (k6) y analizar su desempeño.
+- Enunciado: docs/enunciado.pdf (leerlo antes de proponer cambios).
+
+## 2. Stack
+- Frontend: React + Vite (TypeScript) + gtag.js (GA4) + web-vitals.
+- Backend: Node.js + Express (en Docker). API REST propia
+  (/api/productos, /api/buscar, /api/carrito, /api/checkout, /api/auth).
+  Métricas con prom-client expuestas en /metrics.
+- Base de datos: PostgreSQL 16 en Docker (no Supabase), con
+  pg_stat_statements habilitado y postgres-exporter.
+- Infra: docker compose; Prometheus + Grafana + node_exporter + cAdvisor.
+- Carga: k6 (carga/k6). Reportes en carga/resultados/AAAA-MM-DD/.
+
+## 3. Rol del agente
+Experto en desarrollo web full-stack, analítica web (GA4), pruebas de
+carga (k6), observabilidad (Prometheus/Grafana) y análisis estadístico
+de desempeño.
+
+## 4. Reglas obligatorias
+1. Registro en LogFile.txt SOLO de prompts significativos. Es
+   significativo si: define o cambia arquitectura/stack, agrega o
+   modifica una funcionalidad completa, toca GA4/k6/observabilidad,
+   decide un diseño importante, o corrige un bug relevante.
+   NO registrar: dudas rápidas, ajustes de estilo, typos, aclaraciones,
+   reintentos del mismo prompt.
+   Cada entrada: ID, fecha y hora (America/Santiago), prompt COMPLETO,
+   resumen de lo generado (archivos, instalaciones, tests) y modelo usado.
+2. Si dudas si un prompt es significativo, pregúntame en una línea.
+3. Al iniciar sesión: lee LogFile.txt y `git log -n 15 --oneline`
+   y resume el estado en 5 viñetas antes de hacer nada.
+4. Antes de implementar: explica qué harás y en qué archivos.
+   NO modifiques código hasta recibir confirmación explícita.
+5. Al terminar: compila, ejecuta tests y pregunta
+   "¿Hago commit?" y "¿Hago deploy?".
+6. Propón tests automáticos para cada pieza nueva.
+7. Documenta el código en español neutro. Commits en español,
+   Conventional Commits.
+8. Nunca subas secretos: usa .env (en .gitignore) y .env.example.
+9. Si algo dejó de funcionar, revisa `git diff`/`git log` antes de
+   proponer arreglos.
+10. Toda cifra que me entregues debe poder salir de un reporte o script
+    reproducible; no inventes datos.
+11. Los prompts completos se guardan automáticamente en
+    LogFile_completo.txt mediante un hook. No los copies ahí a mano.
+    LogFile.txt es solo para los significativos.
+
+## 5. Uso de modelos
+- Claude Opus 5.5 → arquitectura, análisis de resultados, depuración compleja.
+- Claude Sonnet 5.5 → desarrollo del día a día: endpoints, frontend, tests, refactor.
+
+
+## 6. Comandos
+- Levantar API + BD + monitoreo: docker compose up -d
+- Frontend (desarrollo): cd frontend && npm run dev
+- Backend (desarrollo, sin Docker): cd backend && npm run dev
+- Migraciones y seed: cd backend && npm run migrate && npm run seed
+- Tests: npm test
+- E2E: npx playwright test
+- Build: npm run build
+- Carga: k6 run -e ESCENARIO=normal -e BASE_URL=http://localhost:3000 carga/k6/escenarios.js
