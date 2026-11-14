@@ -568,3 +568,147 @@ RESUMEN DE LO GENERADO:
 COMMIT: 33b4c1a feat(metricas): prom-client y Prometheus/Grafana/exporters en compose
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0009
+FECHA: 14-11-26 HORA: 17:14 (America/Santiago)
+INTEGRANTE: Rodrigo
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+estado en 5 viñetas como indica AGENTS.md.
+
+Contexto: Subligol tiene ya su API propia (Node.js + Express 5 +
+PostgreSQL 16 en Docker, carpeta backend/), terminada en los commits 1 a
+7: catálogo, auth argon2 + JWT, carrito persistente, checkout con pago
+simulado, órdenes y métricas. El frontend (React 18 + Vite, JavaScript,
+en src/) todavía consulta Supabase directamente. Lee los archivos de
+backend/src/rutas/ para conocer los contratos exactos de la API.
+
+Tarea: commit 8, la tienda del frontend consume la API propia y se quita
+Supabase.
+
+1. Cliente HTTP (src/services/api.js reescrito):
+   - Base: VITE_API_URL o, si no está definida, '/api' (mismo origen).
+     Proxy en vite.config.js: /api → http://localhost:3000.
+   - Agrega "Authorization: Bearer <token>" si hay sesión y
+     "X-Carrito-Id" si hay carrito anónimo (ambos en localStorage).
+     Guarda el X-Carrito-Id que devuelva la API.
+   - Los errores se lanzan como un ErrorApi con status, mensaje y los
+     campos extra (por ejemplo stock_disponible o la lista productos del
+     409 del checkout). Un 401 con sesión cierra la sesión local.
+   - Mantén los NOMBRES de las funciones que usan las vistas de la
+     tienda, para tocar lo mínimo las vistas.
+2. Mapeo de la tienda:
+   - Home → GET /api/home. Categorías → GET /api/categorias (los ids
+     ahora son UUID).
+   - Catálogo → GET /api/productos con filtros y paginación del SERVIDOR
+     (hoy CatalogStoreView pagina en el navegador con slice; cámbialo
+     para usar pagina, limite y totalPaginas). Con texto de búsqueda →
+     GET /api/buscar.
+   - Detalle → GET /api/productos/:id (ya trae relacionados;
+     fetchProductosRelacionados puede reutilizarlo).
+   - AuthContext → /api/auth/login, /api/auth/registro y /api/auth/yo
+     (validar la sesión al cargar la app); al iniciar sesión, si había
+     carrito anónimo, POST /api/carrito/fusionar y borrar el id anónimo.
+   - CartContext → /api/carrito: la respuesta de la API es la fuente de
+     verdad. Muestra el mensaje del 409 (stock_disponible) al usuario.
+     Conserva los eventos GA4 add_to_cart y remove_from_cart.
+   - Checkout → POST /api/checkout con medio_pago "mock" y los campos de
+     despacho que valida el backend (nombre, apellido, telefono, region,
+     comuna, direccion, depto opcional). Si no hay sesión, abrir el
+     AuthModal. Si responde 409, mostrar qué productos no alcanzan.
+     Adapta trackPurchase a la orden que devuelve la API (transaction_id
+     = codigo; items con precio_unitario).
+   - OrderSuccess → GET /api/ordenes/:id. Mis pedidos → GET /api/ordenes.
+3. WebpaySandboxModal: hoy imita la interfaz y los sellos de Transbank
+   ("Transbank Webpay Plus Oficial"), pero no llama a Transbank.
+   Reetiquétalo como "Pago simulado – entorno de pruebas", sin logos ni
+   textos que lo presenten como Webpay oficial, y que envíe medio_pago
+   "mock". La integración con el sandbox real será otro commit.
+4. Panel de administración (/admin): sus endpoints son el commit 9.
+   Propón cómo dejarlo mientras tanto (por ejemplo: las funciones de admin
+   lanzan un ErrorApi claro y AdminApp muestra un aviso "Panel en
+   migración"), sin romper el build. Reemplaza la verificación
+   isSupabaseConfigured por: usuario con sesión y rol admin.
+5. Quitar Supabase: dependencia @supabase/supabase-js, src/services/
+   supabase.js, la pantalla de credenciales de ConfigView, el chunk
+   vendor-supabase de vite.config.js, VITE_SUPABASE_* de .env.example y
+   el respaldo con src/services/mockData.js (verifica con grep que nada
+   lo use antes de borrarlo). Conserva VITE_GA_MEASUREMENT_ID.
+6. Tests del frontend: Vitest en la raíz con entorno node para
+   src/services/ (fetch simulado): URL base, cabeceras Authorization y
+   X-Carrito-Id, guardado del id anónimo, ErrorApi con status y detalle,
+   y cierre de sesión ante 401. El script "test" de la raíz debe correr
+   los tests del backend y los del frontend.
+
+Requisitos: no cambies el backend salvo que encuentres un bug (en ese
+caso explícamelo antes); documenta en español neutro; no agregues GA4
+nuevo (es otro commit).
+
+Antes de escribir código, explícame el plan (archivos a crear, modificar
+y borrar; cómo queda el panel de admin; dependencias que agregas o
+quitas con versión) y espera mi confirmación. Al terminar: npm test,
+npm run build, docker compose up -d --build, npm run dev, y prueba en el
+navegador el flujo completo: home → catálogo con filtros y paginación →
+búsqueda → detalle → agregar al carrito sin sesión → login (fusión del
+carrito) → checkout → orden → mis pedidos, además de un 409 por stock.
+Revisa también que en la consola no queden llamadas a supabase.co.
+Luego pregúntame si registro el prompt en LogFile.txt (si se registra:
+INTEGRANTE con el nombre real, no el usuario de Git, y el hash del
+commit en COMMIT), si hago commit (refactor(frontend): consumir la API
+propia y quitar Supabase) y si hago deploy.
+
+(Respuesta al plan: "1. extiende api/buscar y el punto 2 hazlo" =
+extender /api/buscar con los filtros del catálogo y quitar RUT y notas
+del checkout.)
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Frontend: api.js reescrito (ErrorApi, pedir(), base VITE_API_URL o
+  /api, cabeceras Authorization y X-Carrito-Id, 401 con sesión cierra la
+  sesión local, funciones de la tienda con los mismos nombres; las de
+  admin rechazan con ErrorApi 501 "en migración"); sesion.js
+  (localStorage con try/catch y alCerrarSesion). AuthContext con
+  /api/auth (yo al cargar, fusión del carrito anónimo antes de fijar el
+  usuario). CartContext con /api/carrito como fuente de verdad y aviso
+  del 409 (AvisoTienda). Home con /api/home; catálogo con paginación del
+  servidor (12 por página, páginas con "…", búsqueda con espera de 300 ms
+  desde 2 caracteres, orden "relevancia" al buscar, tope de precio
+  "sin límite" porque el de 25000 ocultaba productos de hasta 28690);
+  detalle con relacionados de la misma respuesta y null ante 404;
+  checkout con medio_pago "mock", sin RUT ni notas, correo de la cuenta
+  en solo lectura, lista de faltantes ante 409; OrderSuccess y Mis
+  pedidos (paginado) con /api/ordenes; trackPurchase con transaction_id =
+  codigo. PagoSimuladoModal reemplaza a WebpaySandboxModal (sin marcas
+  de Transbank ni datos de tarjeta). AdminApp: sesión + rol admin, aviso
+  "Panel en migración" (PANEL_API_DISPONIBLE = false); ConfigView muestra
+  /api/salud.
+- Backend (aprobado): /api/buscar acepta temporada, precio_min,
+  precio_max, en_stock y orden (relevancia por defecto + órdenes del
+  catálogo); leerFiltros y NOMBRES_ORDEN exportados desde
+  rutas/productos.js.
+- Borrados: src/services/{supabase,mockData}.js,
+  src/components/store/WebpaySandboxModal.jsx; chunk vendor-supabase;
+  VITE_SUPABASE_* (VITE_API_URL nueva en .env.example). README "Estado
+  actual" actualizado.
+- Dependencias: se quita @supabase/supabase-js; se agrega vitest 5.1.0
+  (dev, raíz). En backend/, npm ci para instalar prom-client del commit 7.
+- Tests: backend 266 OK (7 nuevos de /api/buscar; el mensaje del commit
+  dice 5 por error); frontend 25 OK (src/services/api.test.js). npm test
+  de la raíz corre ambos.
+- Build: npm run build OK (sin @supabase en el bundle). docker compose
+  up -d --build: node-exporter falla en Docker Desktop para Windows
+  (rslave); se levantó con docker compose up -d api. El grupo confirmó
+  que en Linux funciona, sin cambios. npm run dev en el puerto 5174.
+- Verificación: no había herramientas de navegador en la sesión; el
+  flujo se probó por HTTP a través del proxy de Vite con las mismas
+  llamadas que api.js (home, catálogo filtrado y paginado, búsqueda
+  extendida, detalle y 404, carrito anónimo, login y fusión, checkout
+  SUB-2026-500002, orden, mis pedidos, 409 del carrito con
+  stock_disponible, 409 del checkout con la lista y 401 con token
+  alterado). Pendiente: revisar la interfaz y la consola en el navegador.
+COMMIT: df42ae9 refactor(frontend): consumir la API propia y quitar Supabase
+DEPLOY: no
+==================================================================
