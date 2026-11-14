@@ -3,11 +3,12 @@
  */
 import { describe, it, expect } from 'vitest'
 import {
-  generarDatos, crearAzar, FECHA_BASE,
+  generarDatos, crearAzar, fechaBaseHoy,
   TOTAL_PRODUCTOS, TOTAL_CLIENTES, TOTAL_VENTAS, TOTAL_COMPRAS, TOTAL_DESTACADOS
 } from '../seeds/generador.js'
 
-const datos = generarDatos()
+const FECHA_BASE = new Date('2026-11-01T00:00:00Z')
+const datos = generarDatos(2026, FECHA_BASE)
 
 describe('crearAzar', () => {
   it('es determinista para la misma semilla', () => {
@@ -24,11 +25,27 @@ describe('crearAzar', () => {
 
 describe('generarDatos', () => {
   it('produce exactamente los mismos datos con la misma semilla', () => {
-    expect(JSON.stringify(generarDatos())).toBe(JSON.stringify(datos))
+    expect(JSON.stringify(generarDatos(2026, FECHA_BASE))).toBe(JSON.stringify(datos))
+  })
+
+  it('con otra fecha base solo desplaza las fechas (productos e ids idénticos)', () => {
+    const otro = generarDatos(2026, new Date('2027-03-15T00:00:00Z'))
+    expect(JSON.stringify(otro.productos)).toBe(JSON.stringify(datos.productos))
+    expect(otro.ventas.map((v) => v.id)).toEqual(datos.ventas.map((v) => v.id))
+    const desfase = new Date('2027-03-15T00:00:00Z') - FECHA_BASE
+    expect(otro.ventas[0].fecha - datos.ventas[0].fecha).toBe(desfase)
+  })
+
+  it('por defecto termina el historial hoy (00:00 UTC)', () => {
+    const base = fechaBaseHoy(new Date('2026-11-14T18:30:00Z'))
+    expect(base.toISOString()).toBe('2026-11-14T00:00:00.000Z')
+    const ultima = generarDatos().ventas.at(-1).fecha
+    expect(ultima.getTime()).toBeLessThanOrEqual(fechaBaseHoy().getTime())
+    expect(fechaBaseHoy().getTime() - ultima.getTime()).toBeLessThan(7 * 24 * 60 * 60 * 1000)
   })
 
   it('produce datos distintos con otra semilla', () => {
-    expect(generarDatos(99).productos[0].id).not.toBe(datos.productos[0].id)
+    expect(generarDatos(99, FECHA_BASE).productos[0].id).not.toBe(datos.productos[0].id)
   })
 
   it('genera las cantidades esperadas', () => {

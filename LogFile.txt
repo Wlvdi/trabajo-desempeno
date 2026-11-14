@@ -133,7 +133,7 @@ DEPLOY: no
 ==================================================================
 ID: 0004
 FECHA: 14-11-26 HORA: 14:47 (America/Santiago)
-INTEGRANTE: Wladimir
+INTEGRANTE: Rdonosokk
 AGENTE: Claude Code
 MODELO: Opus 5.5
 ------------------------------------------------------------------
@@ -198,8 +198,6 @@ npm test, prueba los endpoints con docker compose up -d --build y curl,
 y pregúntame si registro el prompt en LogFile.txt, si hago commit
 (feat(api): home, categorías, catálogo, detalle y búsqueda) y si hago
 deploy.
-
-En el otro PC, el agente tiene que leer AGENTS.md. Si es Claude Code, lo hace a través de CLAUDE.md.
 ------------------------------------------------------------------
 RESUMEN DE LO GENERADO:
 - Diseño confirmado: limite > 48 responde 400 (no se recorta);
@@ -223,6 +221,6 @@ RESUMEN DE LO GENERADO:
 - Build: docker compose up -d --build OK; curl a /api/home,
   /api/categorias, /api/productos, /api/productos/:id y /api/buscar OK,
   incluidos 400 y 404.
-COMMIT: feat(api): home, categorías, catálogo, detalle y búsqueda
+COMMIT: 417e1c1 feat(api): home, categorías, catálogo, detalle y búsqueda
 DEPLOY: no
 ==================================================================

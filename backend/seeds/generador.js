@@ -6,8 +6,18 @@
  * base de datos: solo construye objetos en memoria.
  */
 
-/** Fecha de referencia fija: el historial se genera hacia atrás desde aquí. */
-export const FECHA_BASE = new Date('2026-11-01T12:00:00-03:00')
+/**
+ * Fecha de referencia por defecto: hoy a las 00:00 UTC. El historial de
+ * ventas y compras se genera hacia atrás desde aquí, así la ventana de
+ * "últimos 90 días" siempre tiene datos sin importar cuándo se siembre.
+ * Solo se desplazan las fechas: productos, precios, cantidades y UUID son
+ * idénticos para la misma semilla.
+ * @param {Date} [ahora]
+ * @returns {Date}
+ */
+export function fechaBaseHoy(ahora = new Date()) {
+  return new Date(Date.UTC(ahora.getUTCFullYear(), ahora.getUTCMonth(), ahora.getUTCDate()))
+}
 
 export const TOTAL_PRODUCTOS = 500
 export const TOTAL_CLIENTES = 200
@@ -148,8 +158,9 @@ function precioRetail(valor) {
 /**
  * Genera todos los datos semilla.
  * @param {number} [semilla]
+ * @param {Date} [fechaBase] fin del historial (por defecto, hoy 00:00 UTC)
  */
-export function generarDatos(semilla = 2026) {
+export function generarDatos(semilla = 2026, fechaBase = fechaBaseHoy()) {
   const azar = crearAzar(semilla)
 
   // --- Categorías -----------------------------------------------------------
@@ -242,7 +253,7 @@ export function generarDatos(semilla = 2026) {
   const ventas = []
   for (let i = 0; i < TOTAL_VENTAS; i++) {
     const canal = azar.ponderado([['Web', 45], ['Instagram', 25], ['WhatsApp', 20], ['Presencial', 8], ['Otro', 2]])
-    const fecha = new Date(FECHA_BASE.getTime() - azar.siguiente() * 365 * msDia)
+    const fecha = new Date(fechaBase.getTime() - azar.siguiente() * 365 * msDia)
     const lineas = new Map()
     const cantidadLineas = azar.entero(1, 4)
     while (lineas.size < cantidadLineas) {
@@ -262,7 +273,7 @@ export function generarDatos(semilla = 2026) {
       venta.cliente_id = cliente.id
       venta.usuario_id = cliente.id
       venta.cliente_nombre = cliente.nombre
-      venta.codigo = `SUB-${fecha.getFullYear()}-${String(100000 + i).padStart(6, '0')}`
+      venta.codigo = `SUB-${fecha.getUTCFullYear()}-${String(100000 + i).padStart(6, '0')}`
       venta.medio_pago = 'Webpay Plus'
       venta.codigo_autorizacion = `TBK-${String(azar.entero(0, 999999)).padStart(6, '0')}`
       venta.despacho = { region, comuna, direccion: `Calle ${azar.elegir(APELLIDOS)} ${azar.entero(100, 9999)}` }
@@ -278,7 +289,7 @@ export function generarDatos(semilla = 2026) {
   // --- Compras de reposición ------------------------------------------------
   const compras = []
   for (let i = 0; i < TOTAL_COMPRAS; i++) {
-    const fecha = new Date(FECHA_BASE.getTime() - azar.siguiente() * 365 * msDia)
+    const fecha = new Date(fechaBase.getTime() - azar.siguiente() * 365 * msDia)
     const lineas = new Map()
     const cantidadLineas = azar.entero(2, 6)
     while (lineas.size < cantidadLineas) {
