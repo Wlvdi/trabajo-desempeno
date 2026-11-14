@@ -67,6 +67,9 @@ export async function sembrar(pool, { contrasenaClientes, contrasenaAdmin, semil
       truncate table carrito_items, carritos, producto_imagenes, detalle_ventas, ventas,
                      detalle_compras, compras, productos, categorias, audit_logs, usuarios
       restart identity cascade`)
+    // Reinicia los códigos de orden web (SUB-AAAA-NNNNNN, migración 003): cada
+    // prueba de carga parte desde 500000 y no se agota el máximo (999999).
+    await cliente.query('alter sequence seq_codigo_venta restart')
     // Los triggers de auditoría atribuyen los cambios al administrador.
     await cliente.query("select set_config('app.usuario_id', $1, true)", [datos.admin.id])
 

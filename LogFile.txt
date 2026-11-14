@@ -378,7 +378,7 @@ DEPLOY: no
 ==================================================================
 ID: 0007
 FECHA: 14-11-26 HORA: 15:58 (America/Santiago)
-INTEGRANTE: Rdonosokk
+INTEGRANTE: Rodrigo
 AGENTE: Claude Code
 MODELO: Opus 5.5
 ------------------------------------------------------------------
@@ -517,6 +517,6 @@ RESUMEN DE LO GENERADO:
   carrito vacío), órdenes (lista, detalle dueño 200, otro 404, admin 200,
   id no UUID 404) y errores (400 carrito vacío, 401, 501 webpay, 400
   medio y despacho, 409 stock insuficiente).
-COMMIT: feat(checkout): checkout transaccional con pago simulado
+COMMIT: 8e0264f feat(checkout): checkout transaccional con pago simulado
 DEPLOY: no
 ==================================================================

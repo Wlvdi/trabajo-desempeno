@@ -56,6 +56,14 @@ describe('seed', () => {
     expect(admin.rows[0].rol).toBe('admin')
   })
 
+  it('reinicia la secuencia de códigos de orden en 500000', async () => {
+    await pool.query("select nextval('seq_codigo_venta')")
+    await pool.query("select nextval('seq_codigo_venta')")
+    await sembrar(pool, { contrasenaClientes: 'clave-cliente-test', contrasenaAdmin: 'clave-admin-test' })
+    const { rows } = await pool.query("select nextval('seq_codigo_venta')::int as n")
+    expect(rows[0].n).toBe(500000)
+  })
+
   it('es reproducible: volver a sembrar deja los mismos ids y precios', async () => {
     const antes = await pool.query('select id, precio_venta, stock_actual from productos order by id')
     await sembrar(pool, { contrasenaClientes: 'clave-cliente-test', contrasenaAdmin: 'clave-admin-test' })
