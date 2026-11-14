@@ -43,6 +43,9 @@ services:
       ARGON2_MEMORIA_KIB: ${ARGON2_MEMORIA_KIB:-}
       ARGON2_ITERACIONES: ${ARGON2_ITERACIONES:-}
       ARGON2_PARALELISMO: ${ARGON2_PARALELISMO:-}
+      # Pago simulado en el checkout (medio_pago "mock"). Deshabilitado por defecto;
+      # en local y para las pruebas de carga se habilita con PAGO_MOCK=true en .env.
+      PAGO_MOCK: ${PAGO_MOCK:-false}
     ports:
       - "${API_PUERTO_HOST:-3000}:3000"
 

@@ -29,13 +29,15 @@ export function rutaNoEncontrada(req, res) {
  * Convierte cualquier error en una respuesta JSON.
  * Si el error trae `status` (por ejemplo, JSON mal formado) se respeta;
  * en otro caso se responde 500 sin exponer detalles internos.
+ * Un ErrorHttp 5xx lanzado a propósito (por ejemplo, 501 "no implementado")
+ * conserva su mensaje: no es un fallo inesperado.
  * Los errores 4xx pueden agregar campos con `detalle`.
  */
 // Express identifica el manejador de errores por sus 4 parámetros.
 // eslint-disable-next-line no-unused-vars
 export function manejarErrores(err, _req, res, _next) {
   const status = Number.isInteger(err.status) && err.status >= 400 ? err.status : 500
-  if (status >= 500) {
+  if (status >= 500 && !(err instanceof ErrorHttp)) {
     console.error('[api] Error no controlado:', err)
     res.status(status).json({ error: 'Error interno del servidor' })
     return

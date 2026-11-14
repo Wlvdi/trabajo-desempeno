@@ -46,6 +46,23 @@ function leerJwt(env, entorno) {
 }
 
 /**
+ * Lee PAGO_MOCK ("true" | "false"). Por defecto true fuera de producción y
+ * false en producción. Un valor distinto lanza error (la API no arranca).
+ * Motivo (guía, sección 5.3): bajo carga nunca se debe llamar al sandbox de
+ * un tercero; el pago simulado permite medir el checkout completo.
+ * @param {string | undefined} valor
+ * @param {string} entorno
+ * @returns {boolean}
+ */
+function leerPagoMock(valor, entorno) {
+  const texto = valor?.trim().toLowerCase()
+  if (!texto) return entorno !== 'production'
+  if (texto === 'true') return true
+  if (texto === 'false') return false
+  throw new Error('PAGO_MOCK debe ser true o false')
+}
+
+/**
  * Construye la configuración a partir de un objeto de entorno.
  * Es una función pura para poder probarla sin reiniciar el proceso.
  * @param {Record<string, string | undefined>} env
@@ -70,7 +87,9 @@ export function leerConfig(env) {
       memoryCost: entero(env.ARGON2_MEMORIA_KIB, undefined),
       timeCost: entero(env.ARGON2_ITERACIONES, undefined),
       parallelism: entero(env.ARGON2_PARALELISMO, undefined)
-    })
+    }),
+    // Habilita medio_pago "mock" en el checkout (aprobación simulada).
+    pagoMock: leerPagoMock(env.PAGO_MOCK, entorno)
   })
 }
 

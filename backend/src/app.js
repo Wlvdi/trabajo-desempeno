@@ -11,13 +11,16 @@ import { rutasProductos } from './rutas/productos.js'
 import { rutasBuscar } from './rutas/buscar.js'
 import { rutasAuth } from './rutas/auth.js'
 import { rutasCarrito } from './rutas/carrito.js'
+import { rutasCheckout } from './rutas/checkout.js'
+import { rutasOrdenes } from './rutas/ordenes.js'
 import { rutaNoEncontrada, manejarErrores } from './middlewares/errores.js'
 
 /**
- * @param {{ pool: { query: Function } }} dependencias
+ * @param {{ pool: { query: Function }, pagoMock?: boolean }} dependencias
+ *   pagoMock: reemplaza config.pagoMock (lo usan los tests)
  * @returns {import('express').Express}
  */
-export function crearApp({ pool }) {
+export function crearApp({ pool, pagoMock }) {
   const app = express()
 
   app.disable('x-powered-by')
@@ -30,6 +33,8 @@ export function crearApp({ pool }) {
   app.use('/api/buscar', rutasBuscar(pool))
   app.use('/api/auth', rutasAuth(pool))
   app.use('/api/carrito', rutasCarrito(pool))
+  app.use('/api/checkout', rutasCheckout(pool, pagoMock === undefined ? {} : { pagoMock }))
+  app.use('/api/ordenes', rutasOrdenes(pool))
 
   app.use(rutaNoEncontrada)
   app.use(manejarErrores)

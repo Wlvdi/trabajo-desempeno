@@ -48,3 +48,23 @@ describe('leerConfig: argon2', () => {
     expect(argon2).toEqual({ memoryCost: undefined, timeCost: undefined, parallelism: undefined })
   })
 })
+
+describe('leerConfig: PAGO_MOCK', () => {
+  const SEC = { JWT_SECRETO: 'a'.repeat(32) }
+
+  it('por defecto está habilitado fuera de producción y deshabilitado en producción', () => {
+    expect(leerConfig({}).pagoMock).toBe(true)
+    expect(leerConfig({ NODE_ENV: 'test' }).pagoMock).toBe(true)
+    expect(leerConfig({ ...SEC, NODE_ENV: 'production' }).pagoMock).toBe(false)
+  })
+
+  it('respeta el valor explícito', () => {
+    expect(leerConfig({ ...SEC, NODE_ENV: 'production', PAGO_MOCK: 'true' }).pagoMock).toBe(true)
+    expect(leerConfig({ PAGO_MOCK: 'FALSE' }).pagoMock).toBe(false)
+    expect(leerConfig({ ...SEC, NODE_ENV: 'production', PAGO_MOCK: '' }).pagoMock).toBe(false)
+  })
+
+  it('un valor distinto de true/false impide arrancar', () => {
+    expect(() => leerConfig({ PAGO_MOCK: 'si' })).toThrow(/PAGO_MOCK debe ser true o false/)
+  })
+})

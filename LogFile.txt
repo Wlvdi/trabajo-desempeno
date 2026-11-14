@@ -374,3 +374,149 @@ RESUMEN DE LO GENERADO:
 COMMIT: 09c6e98 feat(carrito): carrito persistente en base de datos
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0007
+FECHA: 14-11-26 HORA: 15:58 (America/Santiago)
+INTEGRANTE: Rdonosokk
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+estado en 5 viñetas como indica AGENTS.md.
+
+Contexto: Subligol está migrando de Supabase a una API propia (Node.js +
+Express 5 + PostgreSQL 16 en Docker), en JavaScript ESM con JSDoc. Ya
+están hechos los commits 1 a 5: estructura y /api/salud; migraciones y
+seed determinista; catálogo (/api/home, /api/productos, /api/buscar);
+auth con argon2id y JWT (middlewares autenticar, autenticarOpcional y
+requerirRol en backend/src/middlewares/auth.js); y carrito persistente
+(/api/carrito, consultas en backend/src/consultas/carrito.js, ayudante
+enTransaccion en backend/src/db/transaccion.js, ErrorHttp con detalle en
+backend/src/middlewares/errores.js). Esquema relevante: ventas tiene
+codigo (único), estado ('PENDIENTE'|'PAGADO'|'ANULADO'), medio_pago,
+codigo_autorizacion, costo_envio, despacho (jsonb), cliente_id y
+usuario_id; el trigger de detalle_ventas descuenta stock y escribe
+audit_logs; productos tiene CHECK stock_actual >= 0; la auditoría toma
+el usuario de set_config('app.usuario_id', ..., true).
+
+Tarea: commit 6, checkout transaccional con pago simulado, y consulta de
+órdenes.
+
+Endpoints:
+1. POST /api/checkout (requiere sesión) con
+   { medio_pago, despacho: { nombre, apellido, telefono, region, comuna,
+   direccion } }. Revisa src/views/store/CheckoutStoreView.jsx para usar
+   los mismos campos de despacho que el frontend. Respuesta 201 con la
+   orden: { id, codigo, fecha, estado, medio_pago, codigo_autorizacion,
+   items, neto, costo_envio, total, despacho }.
+2. GET /api/ordenes (requiere sesión): órdenes del usuario, de la más
+   reciente a la más antigua, paginadas con pagina y limite como el
+   catálogo.
+3. GET /api/ordenes/:id (requiere sesión): detalle con sus items. Solo
+   el dueño o un admin; para cualquier otro, o si el id no es UUID, 404
+   (no 403, para no revelar que existe).
+
+Flujo del checkout, TODO en una sola transacción:
+- Bloquear el carrito del usuario. Carrito vacío → 400.
+- Bloquear los productos del carrito con SELECT ... FOR UPDATE en orden
+  fijo (ORDER BY id) para evitar deadlocks entre compras simultáneas.
+- Validar que estén activos y con stock. Si alguno no alcanza → 409 con
+  la lista { producto_id, nombre, solicitado, disponible } y SIN cambios
+  en la base.
+- Precios actuales de productos (no del carrito). Envío: 0 si el neto es
+  >= 30000, si no 3990 (la misma regla del seed; déjala como constante
+  documentada).
+- Código de orden SUB-AAAA-NNNNNN a partir de una secuencia nueva en una
+  migración 003 (que empiece en 500000, para no chocar con los códigos
+  del seed, que van de 100000 a 102999).
+- Fijar app.usuario_id; insertar ventas (canal 'Web', estado 'PAGADO',
+  cliente_id y usuario_id = el usuario) y detalle_ventas en un solo
+  INSERT de varias filas (los triggers descuentan stock y auditan);
+  vaciar el carrito.
+Pago:
+- medio_pago 'mock' aprueba sin llamar a servicios externos y genera un
+  codigo_autorizacion 'MOCK-xxxxxx'. Solo se acepta si PAGO_MOCK=true
+  (por defecto true fuera de producción y false en producción; agrégalo a
+  config.js, .env.example y docker-compose.yml). Si está deshabilitado
+  → 400 claro.
+- medio_pago 'webpay' → 501 "no implementado aún" (la integración con el
+  sandbox real de Transbank será otro commit). Cualquier otro valor → 400.
+- Motivo (guía, sección 5.3): bajo carga nunca se debe llamar al sandbox
+  de un tercero.
+
+Requisitos:
+- Validaciones con 400 en español (largos máximos en cada campo de
+  despacho). Solo consultas parametrizadas.
+- No toques el frontend ni agregues métricas (commits 8 y 7).
+- Documenta en el código que el checkout mantiene una conexión del pool
+  durante toda la transacción (dato importante para la Fase 2).
+
+Tests (Vitest + Supertest sobre subligol_test con sembrar()):
+- compra OK: 201, descuenta stock, crea venta y detalle con
+  cliente_id, deja auditoría VENTA_SALIDA con el usuario, vacía el
+  carrito, aplica la regla de envío en ambos casos, usa el precio actual
+  si cambió después de agregar al carrito, y el código tiene el formato;
+- stock insuficiente → 409 con la lista y sin cambios (stock, ventas,
+  carrito); carrito vacío → 400; sin sesión → 401; mock deshabilitado →
+  400; webpay → 501; validaciones de despacho → 400;
+- concurrencia: 20 usuarios distintos compran a la vez un producto con
+  stock 5 → exactamente 5 compras 201, el resto 409 y stock final 0;
+  dos compras simultáneas con los mismos 2 productos en distinto orden en
+  el carrito terminan sin deadlock;
+- órdenes: el dueño ve su orden y su lista; otro cliente → 404; admin
+  → 200; paginación de /api/ordenes.
+Los 196 tests existentes deben seguir pasando.
+
+Antes de escribir código, explícame el diseño (archivos a crear y
+modificar, la migración 003, el flujo SQL del checkout y cómo evita
+sobreventa y deadlocks) y espera mi confirmación. Al terminar, ejecuta
+npm test, prueba con docker compose up -d --build y curl (login,
+agregar al carrito, checkout, órdenes y los errores), y pregúntame si
+registro el prompt en LogFile.txt, si hago commit (feat(checkout):
+checkout transaccional con pago simulado) y si hago deploy.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño confirmado: validaciones de cuerpo y medio de pago ANTES de
+  pedir conexión al pool; luego una transacción (enTransaccion) que
+  mantiene la conexión hasta el COMMIT (documentado). Carrito con
+  FOR UPDATE; productos con SELECT ... ORDER BY p.id FOR UPDATE OF p
+  (orden fijo: sin deadlocks; en READ COMMITTED la espera devuelve el
+  stock ya actualizado: sin sobreventa). 409 con la lista de faltantes
+  (inactivo = disponible 0) y ROLLBACK; el CHECK de stock (23514) también
+  se traduce a 409. Montos en centavos con precios actuales; envío con
+  UMBRAL_ENVIO_GRATIS=30000 y COSTO_ENVIO=3990 en src/pagos.js. Venta con
+  código SUB-AAAA (año en hora de Chile) + seq_codigo_venta; detalle en
+  un INSERT de varias filas; vaciado del carrito. despacho acepta depto
+  opcional; rut y email no se guardan; cliente_nombre = nombre + apellido.
+  PAGO_MOCK: por defecto true fuera de producción y false en producción;
+  en compose ${PAGO_MOCK:-false} y PAGO_MOCK=true en .env local y en
+  .env.example (con advertencia para deploy real). /api/ordenes/:id
+  responde 404 tanto si no existe como si es ajena.
+- Corrección relacionada: manejarErrores conserva el mensaje de un
+  ErrorHttp 5xx lanzado a propósito (501); los errores inesperados
+  siguen ocultos como 500.
+- Archivos nuevos: backend/migraciones/003_checkout.sql,
+  backend/src/pagos.js, backend/src/consultas/ordenes.js,
+  backend/src/rutas/{checkout,ordenes}.js,
+  backend/tests/{ayudantes-checkout,checkout.test,
+  checkout-concurrencia.test,ordenes.test,pagos.test}.js.
+  Modificados: backend/src/{app,config}.js,
+  backend/src/middlewares/errores.js,
+  backend/tests/{bd,config,salud}.test.js, docker-compose.yml,
+  .env.example. Fuera del repo: PAGO_MOCK=true en .env.
+- Instalaciones: ninguna.
+- Tests: 241 casos en 18 archivos, OK (196 previos + 45 nuevos);
+  concurrencia estable en 3 corridas adicionales (20 compradores con
+  stock 5 → 5 × 201 y 15 × 409, stock final 0; 10 rondas cruzadas A/B
+  sin deadlock).
+- Build: docker compose up -d --build OK; npm run migrate aplicó
+  003_checkout.sql en la base de desarrollo; prueba con fetch/curl de
+  login, carrito, checkout (201 SUB-2026-500000, stock descontado,
+  carrito vacío), órdenes (lista, detalle dueño 200, otro 404, admin 200,
+  id no UUID 404) y errores (400 carrito vacío, 401, 501 webpay, 400
+  medio y despacho, 409 stock insuficiente).
+COMMIT: feat(checkout): checkout transaccional con pago simulado
+DEPLOY: no
+==================================================================

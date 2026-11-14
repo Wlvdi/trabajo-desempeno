@@ -4,7 +4,9 @@
  */
 import { describe, it, expect } from 'vitest'
 import request from 'supertest'
+import express from 'express'
 import { crearApp } from '../src/app.js'
+import { ErrorHttp, manejarErrores } from '../src/middlewares/errores.js'
 
 const poolOk = { query: async () => ({ rows: [{ '?column?': 1 }] }) }
 const poolCaido = {
@@ -46,5 +48,34 @@ describe('Manejo de errores', () => {
   it('no expone la cabecera x-powered-by', async () => {
     const res = await request(crearApp({ pool: poolOk })).get('/api/salud')
     expect(res.headers['x-powered-by']).toBeUndefined()
+  })
+})
+
+describe('manejarErrores con errores 5xx', () => {
+  const app = express()
+  app.get('/intencional', () => {
+    throw new ErrorHttp(501, 'No implementado aún')
+  })
+  app.get('/inesperado', () => {
+    throw new Error('detalle interno que no debe salir')
+  })
+  app.use(manejarErrores)
+
+  it('un ErrorHttp 5xx lanzado a propósito conserva su mensaje', async () => {
+    const res = await request(app).get('/intencional')
+    expect(res.status).toBe(501)
+    expect(res.body).toEqual({ error: 'No implementado aún' })
+  })
+
+  it('un error inesperado responde 500 sin exponer detalles', async () => {
+    const original = console.error
+    console.error = () => {}
+    try {
+      const res = await request(app).get('/inesperado')
+      expect(res.status).toBe(500)
+      expect(res.body).toEqual({ error: 'Error interno del servidor' })
+    } finally {
+      console.error = original
+    }
   })
 })
