@@ -89,7 +89,6 @@ Los reportes quedan en `carga/resultados/AAAA-MM-DD/`.
 - `infra/` docker-compose, Prometheus y Grafana
 - `carga/` scripts k6 y resultados
 - `analisis/` scripts de análisis estadístico
-- `docs/` guía/enunciado, capturas de GA4, arquitectura e informe
 
 ---
 

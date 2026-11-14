@@ -126,6 +126,6 @@ RESUMEN DE LO GENERADO:
 - Instalaciones: argon2 0.45.2.
 - Tests: 31 casos en 4 archivos, OK.
 - Build: npm run migrate y npm run seed OK; imagen Docker OK.
-COMMIT: pendiente
+COMMIT: 9df08dc feat(db): migraciones adaptadas desde Supabase y seed de 500 productos
 DEPLOY: no
 ==================================================================
