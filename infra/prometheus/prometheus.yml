@@ -1,0 +1,34 @@
+# Configuración de Prometheus para Subligol.
+# Todos los objetivos se leen por la red interna de Docker (nombre del servicio).
+
+global:
+  # Resolución fina durante las pruebas de carga (guía, sección 6.1).
+  scrape_interval: 5s
+  scrape_timeout: 4s
+  evaluation_interval: 5s
+
+scrape_configs:
+  # API Express: métricas de prom-client en el puerto interno 9464.
+  - job_name: api
+    static_configs:
+      - targets: ["api:9464"]
+
+  # CPU, memoria, disco y red del equipo (host).
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+
+  # CPU y memoria por contenedor.
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+
+  # PostgreSQL: conexiones, transacciones, bloqueos y pg_stat_statements.
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres-exporter:9187"]
+
+  # El propio Prometheus.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

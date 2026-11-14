@@ -72,6 +72,8 @@ export function leerConfig(env) {
   return Object.freeze({
     entorno,
     puerto: entero(env.PORT, 3000),
+    // Puerto interno de GET /metrics (Prometheus). No se publica fuera de Docker.
+    metricasPuerto: entero(env.METRICAS_PUERTO, 9464),
     baseDatos: Object.freeze({
       url: env.DATABASE_URL || 'postgres://subligol:subligol@localhost:5432/subligol',
       // Tamaño máximo del pool de conexiones: es una de las palancas de la Fase 2.

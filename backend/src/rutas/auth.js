@@ -27,10 +27,28 @@ const usuarioPublico = ({ id, email, nombre, rol }) => ({ id, email, nombre, rol
 
 /**
  * @param {import('pg').Pool} pool
+ * @param {{ metricas?: import('../metricas.js').Metricas }} [opciones]
+ *   metricas: registra la duración de argon2 y el resultado de cada login
  * @returns {import('express').Router}
  */
-export function rutasAuth(pool) {
+export function rutasAuth(pool, { metricas } = {}) {
   const router = Router()
+
+  /**
+   * Mide la duración de una operación de argon2 (hash o verificar).
+   * @template T
+   * @param {'hash' | 'verificar'} operacion
+   * @param {() => Promise<T>} fn
+   * @returns {Promise<T>}
+   */
+  async function medirContrasena(operacion, fn) {
+    const fin = metricas?.duracionContrasenas.startTimer({ operacion })
+    try {
+      return await fn()
+    } finally {
+      fin?.()
+    }
+  }
 
   router.post('/registro', async (req, res) => {
     const cuerpo = cuerpoObjeto(req.body)
@@ -39,7 +57,7 @@ export function rutasAuth(pool) {
     const contrasena = campoTexto('contrasena', cuerpo.contrasena, { min: 8, max: 128, recortar: false })
     // cuerpo.rol se ignora: el registro público siempre crea clientes.
 
-    const hash = await hashear(contrasena)
+    const hash = await medirContrasena('hash', () => hashear(contrasena))
     try {
       // Sin SELECT previo: el índice único uq_usuarios_email (lower(email))
       // resuelve también el caso de dos registros simultáneos.
@@ -72,14 +90,16 @@ export function rutasAuth(pool) {
     const fila = rows[0]
     // Si el correo no existe se verifica igual contra un hash ficticio:
     // el tiempo de respuesta no revela qué correos están registrados.
-    const valida = fila
-      ? await verificar(fila.hash_contrasena, contrasena)
-      : await verificarContraHashFicticio(contrasena)
+    const valida = await medirContrasena('verificar', () =>
+      fila ? verificar(fila.hash_contrasena, contrasena) : verificarContraHashFicticio(contrasena)
+    )
 
     if (!valida) {
+      metricas?.logins.inc({ resultado: 'fallido' })
       res.status(401).json({ error: CREDENCIALES_INCORRECTAS })
       return
     }
+    metricas?.logins.inc({ resultado: 'ok' })
     const usuario = usuarioPublico(fila)
     res.json({ usuario, token: firmarToken(usuario) })
   })

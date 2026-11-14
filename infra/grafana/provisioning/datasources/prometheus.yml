@@ -1,0 +1,15 @@
+# Fuente de datos Prometheus, cargada automáticamente al iniciar Grafana.
+# El uid fijo ("prometheus") es el que usan los paneles del dashboard.
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      # Igual al scrape_interval: rate() y los gráficos usan la resolución real.
+      timeInterval: 5s

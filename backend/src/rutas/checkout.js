@@ -69,15 +69,28 @@ export function leerCuerpoCheckout(cuerpoCrudo) {
   return { medioPago: cuerpo.medio_pago, despacho }
 }
 
+/**
+ * Resultado de un checkout fallido para la métrica api_compras_total.
+ * @param {{ status?: number }} err
+ * @returns {'sin_stock' | 'carrito_vacio' | 'error'}
+ */
+function resultadoCompra(err) {
+  if (err.status === 409) return 'sin_stock'
+  if (err.status === 400) return 'carrito_vacio'
+  return 'error'
+}
+
 /** Monto en pesos a centavos enteros (evita errores de punto flotante). */
 const aCentavos = (monto) => Math.round(monto * 100)
 
 /**
  * @param {import('pg').Pool} pool
- * @param {{ pagoMock?: boolean }} [opciones] por defecto, config.pagoMock
+ * @param {{ pagoMock?: boolean, metricas?: import('../metricas.js').Metricas }} [opciones]
+ *   pagoMock: por defecto, config.pagoMock
+ *   metricas: cuenta cada intento de compra por resultado (api_compras_total)
  * @returns {import('express').Router}
  */
-export function rutasCheckout(pool, { pagoMock = config.pagoMock } = {}) {
+export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {}) {
   const router = Router()
 
   router.post('/', autenticar, async (req, res) => {
@@ -86,60 +99,66 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock } = {}) {
     exigirMedioDisponible(medioPago, { pagoMock })
     const usuarioId = req.usuario.id
 
-    const orden = await enTransaccion(pool, async (db) => {
-      await db.query("select set_config('app.usuario_id', $1, true)", [usuarioId])
+    let orden
+    try {
+      orden = await enTransaccion(pool, async (db) => {
+        await db.query("select set_config('app.usuario_id', $1, true)", [usuarioId])
 
-      const carritoId = await buscarCarritoDeUsuario(db, usuarioId, { bloquear: true })
-      const lineas = carritoId ? await bloquearLineasDelCarrito(db, carritoId) : []
-      if (lineas.length === 0) throw new ErrorHttp(400, 'El carrito está vacío')
+        const carritoId = await buscarCarritoDeUsuario(db, usuarioId, { bloquear: true })
+        const lineas = carritoId ? await bloquearLineasDelCarrito(db, carritoId) : []
+        if (lineas.length === 0) throw new ErrorHttp(400, 'El carrito está vacío')
 
-      const faltantes = lineas
-        .filter((l) => !l.activo || l.stock_actual < l.cantidad)
-        .map((l) => ({
+        const faltantes = lineas
+          .filter((l) => !l.activo || l.stock_actual < l.cantidad)
+          .map((l) => ({
+            producto_id: l.id,
+            nombre: l.nombre,
+            solicitado: l.cantidad,
+            disponible: l.activo ? l.stock_actual : 0
+          }))
+        if (faltantes.length > 0) {
+          throw new ErrorHttp(409, 'Stock insuficiente para completar la compra', { productos: faltantes })
+        }
+
+        // Precios actuales del producto (no los del momento en que se agregó al carrito).
+        const detalle = lineas.map((l) => ({
           producto_id: l.id,
-          nombre: l.nombre,
-          solicitado: l.cantidad,
-          disponible: l.activo ? l.stock_actual : 0
+          cantidad: l.cantidad,
+          precio_unitario: l.precio_venta,
+          subtotal: (aCentavos(l.precio_venta) * l.cantidad) / 100
         }))
-      if (faltantes.length > 0) {
-        throw new ErrorHttp(409, 'Stock insuficiente para completar la compra', { productos: faltantes })
-      }
+        const neto = detalle.reduce((s, l) => s + aCentavos(l.subtotal), 0) / 100
+        const envio = costoEnvio(neto)
+        const total = (aCentavos(neto) + aCentavos(envio)) / 100
 
-      // Precios actuales del producto (no los del momento en que se agregó al carrito).
-      const detalle = lineas.map((l) => ({
-        producto_id: l.id,
-        cantidad: l.cantidad,
-        precio_unitario: l.precio_venta,
-        subtotal: (aCentavos(l.precio_venta) * l.cantidad) / 100
-      }))
-      const neto = detalle.reduce((s, l) => s + aCentavos(l.subtotal), 0) / 100
-      const envio = costoEnvio(neto)
-      const total = (aCentavos(neto) + aCentavos(envio)) / 100
+        const pago = autorizarPagoMock(total)
 
-      const pago = autorizarPagoMock(total)
+        const ventaId = await insertarVenta(db, {
+          usuarioId,
+          medioPago,
+          codigoAutorizacion: pago.codigo_autorizacion,
+          costoEnvio: envio,
+          total,
+          despacho,
+          clienteNombre: `${despacho.nombre} ${despacho.apellido}`
+        })
+        try {
+          await insertarDetalle(db, ventaId, detalle)
+        } catch (err) {
+          // Segunda barrera: el CHECK de stock no debería saltar porque los
+          // productos están bloqueados y validados, pero si salta es un 409.
+          if (err.code === VIOLACION_CHECK) throw new ErrorHttp(409, 'Stock insuficiente para completar la compra')
+          throw err
+        }
+        await vaciarCarrito(db, carritoId)
 
-      const ventaId = await insertarVenta(db, {
-        usuarioId,
-        medioPago,
-        codigoAutorizacion: pago.codigo_autorizacion,
-        costoEnvio: envio,
-        total,
-        despacho,
-        clienteNombre: `${despacho.nombre} ${despacho.apellido}`
+        return leerOrden(db, ventaId, { usuarioId, esAdmin: false })
       })
-      try {
-        await insertarDetalle(db, ventaId, detalle)
-      } catch (err) {
-        // Segunda barrera: el CHECK de stock no debería saltar porque los
-        // productos están bloqueados y validados, pero si salta es un 409.
-        if (err.code === VIOLACION_CHECK) throw new ErrorHttp(409, 'Stock insuficiente para completar la compra')
-        throw err
-      }
-      await vaciarCarrito(db, carritoId)
-
-      return leerOrden(db, ventaId, { usuarioId, esAdmin: false })
-    })
-
+    } catch (err) {
+      metricas?.compras.inc({ resultado: resultadoCompra(err) })
+      throw err
+    }
+    metricas?.compras.inc({ resultado: 'ok' })
     res.status(201).json(orden)
   })
 

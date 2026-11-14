@@ -1,6 +1,13 @@
-# Subligol: API + PostgreSQL.
-# El monitoreo (Prometheus, Grafana y exportadores) se agrega en un commit posterior.
+# Subligol: API + PostgreSQL + monitoreo (Prometheus, Grafana y exportadores).
 # Uso: copiar .env.example a .env, completar y ejecutar `docker compose up -d`.
+#
+# Puertos en el equipo:
+#   3000  API (pública)
+#   5432  PostgreSQL        (solo 127.0.0.1)
+#   9090  Prometheus        (solo 127.0.0.1)
+#   3001  Grafana           (solo 127.0.0.1)
+# En una VM, Prometheus y Grafana se ven con un túnel SSH (guía, sección 6.1):
+#   ssh -L 3001:localhost:3001 -L 9090:localhost:9090 usuario@vm
 
 services:
   db:
@@ -11,10 +18,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
       POSTGRES_DB: ${POSTGRES_DB:-subligol}
     # pg_stat_statements registra el costo de cada consulta (Fase 2).
+    # track_io_timing mide cuánto tiempo de cada consulta se va en leer disco.
     command: >
       postgres
       -c shared_preload_libraries=pg_stat_statements
       -c pg_stat_statements.track=all
+      -c track_io_timing=on
     volumes:
       - datos_postgres:/var/lib/postgresql/data
     # Solo accesible desde este equipo (desarrollo local y tests).
@@ -35,6 +44,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3000
+      # GET /metrics en un puerto interno: no se publica, solo lo lee Prometheus.
+      METRICAS_PUERTO: 9464
       DATABASE_URL: postgres://${POSTGRES_USER:-subligol}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-subligol}
       PG_POOL_MAX: ${PG_POOL_MAX:-10}
       # Autenticación: JWT (HS256) y parámetros de argon2id (vacío = valor por defecto de la librería).
@@ -49,5 +60,99 @@ services:
     ports:
       - "${API_PUERTO_HOST:-3000}:3000"
 
+  # ---------------------------------------------------------------------------
+  # Monitoreo (versiones fijas: los resultados deben ser reproducibles)
+  # ---------------------------------------------------------------------------
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      # Permite que k6 envíe sus métricas (k6 run -o experimental-prometheus-rw).
+      - --web.enable-remote-write-receiver
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - datos_prometheus:/prometheus
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PUERTO_HOST:-9090}:9090"
+    depends_on:
+      - api
+      - node-exporter
+      - cadvisor
+      - postgres-exporter
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_CONTRASENA:?Define GRAFANA_CONTRASENA en .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/subligol.json
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - datos_grafana:/var/lib/grafana
+    ports:
+      - "127.0.0.1:${GRAFANA_PUERTO_HOST:-3001}:3000"
+    depends_on:
+      - prometheus
+
+  # CPU, memoria y disco del equipo. En Linux mide el host real; con Docker
+  # Desktop (Windows/Mac) mide la máquina virtual de Docker.
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    restart: unless-stopped
+    pid: host
+    command:
+      - --path.rootfs=/host
+    volumes:
+      - /:/host:ro,rslave
+
+  # CPU y memoria por contenedor (api, db, ...).
+  # Se usa ghcr.io/google/cadvisor 0.55.0 porque las versiones de gcr.io
+  # (<= v0.52) no reconocen los contenedores cuando Docker usa el almacén de
+  # imágenes de containerd (por defecto en Docker 29): pierden el nombre del
+  # servicio y los paneles por contenedor quedan vacíos.
+  cadvisor:
+    image: ghcr.io/google/cadvisor:0.55.0
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kmsg
+    command:
+      - --docker_only=true
+      # Menos métricas que no se usan: menor costo para el propio monitoreo.
+      - --disable_metrics=percpu,sched,tcp,udp,hugetlb,referenced_memory,cpu_topology,resctrl
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+
+  # PostgreSQL: conexiones, transacciones, bloqueos y consultas más costosas.
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.17.1
+    restart: unless-stopped
+    environment:
+      DATA_SOURCE_URI: db:5432/${POSTGRES_DB:-subligol}?sslmode=disable
+      DATA_SOURCE_USER: ${POSTGRES_USER:-subligol}
+      DATA_SOURCE_PASS: ${POSTGRES_PASSWORD}
+    # stat_statements expone el tiempo por queryid; el texto de cada consulta
+    # se obtiene con: select queryid, query from pg_stat_statements.
+    command:
+      - --collector.stat_statements
+    depends_on:
+      db:
+        condition: service_healthy
+
 volumes:
   datos_postgres:
+  datos_prometheus:
+  datos_grafana:

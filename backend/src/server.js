@@ -4,9 +4,15 @@
 import { config } from './config.js'
 import { crearPool } from './db/pool.js'
 import { crearApp } from './app.js'
+import { crearAppMetricas } from './metricas.js'
 
 const pool = crearPool()
 const app = crearApp({ pool })
+
+// Servidor de métricas en un puerto interno aparte (solo lo lee Prometheus).
+const servidorMetricas = crearAppMetricas(app.locals.metricas.registro).listen(config.metricasPuerto, () => {
+  console.log(`[api] Métricas en el puerto interno ${config.metricasPuerto} (GET /metrics)`)
+})
 
 const servidor = app.listen(config.puerto, () => {
   console.log(`[api] Subligol API escuchando en el puerto ${config.puerto} (${config.entorno})`)
@@ -21,6 +27,7 @@ const servidor = app.listen(config.puerto, () => {
  */
 function apagar(senal) {
   console.log(`[api] Recibida ${senal}, cerrando...`)
+  servidorMetricas.close()
   servidor.close(async () => {
     await pool.end()
     process.exit(0)

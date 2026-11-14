@@ -1,0 +1,13 @@
+# Carga los dashboards versionados en infra/grafana/dashboards/ (JSON).
+# Los cambios hechos desde la interfaz de Grafana no se guardan en Git:
+# para conservarlos, exportar el JSON y reemplazar el archivo.
+apiVersion: 1
+
+providers:
+  - name: subligol
+    folder: Subligol
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

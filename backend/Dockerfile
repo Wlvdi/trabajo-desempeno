@@ -13,7 +13,8 @@ COPY src ./src
 # No ejecutar como root.
 USER node
 
-EXPOSE 3000
+# 3000: API pública. 9464: GET /metrics, solo para Prometheus (no se publica).
+EXPOSE 3000 9464
 
 # wget viene incluido en Alpine (busybox).
 HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
