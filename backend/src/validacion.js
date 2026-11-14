@@ -224,3 +224,32 @@ export function campoEmail(valor) {
   }
   return email
 }
+
+/**
+ * Campo UUID obligatorio del cuerpo.
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @returns {string}
+ */
+export function campoUuid(nombre, valor) {
+  if (!esUuid(valor)) {
+    throw new ErrorValidacion(`El campo "${nombre}" es obligatorio y debe ser un id (UUID) válido`)
+  }
+  return /** @type {string} */ (valor).toLowerCase()
+}
+
+/**
+ * Campo entero del cuerpo (debe venir como número JSON, no como texto).
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @param {{ min: number, max: number, porDefecto?: number }} opciones
+ *   porDefecto: si se indica, el campo es opcional
+ * @returns {number}
+ */
+export function campoEntero(nombre, valor, { min, max, porDefecto }) {
+  if (valor === undefined && porDefecto !== undefined) return porDefecto
+  if (!Number.isInteger(valor) || /** @type {number} */ (valor) < min || /** @type {number} */ (valor) > max) {
+    throw new ErrorValidacion(`El campo "${nombre}" debe ser un número entero entre ${min} y ${max}`)
+  }
+  return /** @type {number} */ (valor)
+}

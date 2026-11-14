@@ -335,3 +335,42 @@ RESUMEN DE LO GENERADO:
 COMMIT: feat(auth): registro e inicio de sesión con argon2 y JWT
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0006
+FECHA: 14-11-26 HORA: 15:44 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Sigamos con el commit 5: carrito persistente en base de datos.
+Confirmo el diseño propuesto: carritos de usuarios con sesión y también
+carritos anónimos en la base de datos identificados con la cabecera
+X-Carrito-Id, fusión del carrito anónimo al iniciar sesión, validación
+de stock sin reserva (la definitiva va en el checkout) y precios
+siempre actuales. Implementa este commit aquí, no en el otro PC.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: GET /api/carrito (lectura simple, sin transacción ni
+  bloqueo), POST /api/carrito/items, PATCH y DELETE
+  /api/carrito/items/:productoId, DELETE /api/carrito y
+  POST /api/carrito/fusionar. Modificaciones en transacción con
+  SELECT ... FOR UPDATE del carrito y upsert en una sola sentencia.
+  Límites: 99 unidades por producto y 50 productos distintos. 409 con
+  stock_disponible si no alcanza el stock. Items con los mismos campos
+  que CartContext.jsx. Un id anónimo nunca accede al carrito de un
+  usuario registrado.
+- Archivos nuevos: backend/src/consultas/carrito.js,
+  backend/src/rutas/carrito.js, backend/src/db/transaccion.js,
+  backend/tests/carrito.test.js. Modificados: backend/src/app.js,
+  backend/src/middlewares/errores.js (detalle en errores 4xx),
+  backend/src/validacion.js (campoUuid, campoEntero).
+- Instalaciones: ninguna.
+- Tests: 196 casos en 14 archivos, OK (163 previos + 33 nuevos,
+  incluye 10 "agregar" concurrentes y fusión de carritos).
+- Build: npm run build OK; docker compose up -d --build y curl
+  (agregar anónimo, ver, límite de unidades, login y fusionar) OK.
+COMMIT: pendiente
+DEPLOY: no
+==================================================================
