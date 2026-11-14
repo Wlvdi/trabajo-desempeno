@@ -21,7 +21,12 @@ import {
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
 import { fetchUltimoDespacho, procesarOrdenWeb } from '../../services/api'
-import { trackBeginCheckout, trackPurchase } from '../../services/analytics'
+import {
+  trackAddPaymentInfo,
+  trackAddShippingInfo,
+  trackBeginCheckout,
+  trackPurchase
+} from '../../services/analytics'
 import PagoSimuladoModal from '../../components/store/PagoSimuladoModal'
 
 // Regiones y Comunas de Chile para el checkout
@@ -145,6 +150,9 @@ export default function CheckoutStoreView() {
       setErrorCheckout('Por favor completa todos los campos obligatorios de despacho.')
       return
     }
+    // GA4: datos de despacho confirmados y medio de pago elegido.
+    trackAddShippingInfo(items, total, costoEnvio)
+    trackAddPaymentInfo(items, total)
     setIsPagoOpen(true)
   }
 
@@ -167,7 +175,7 @@ export default function CheckoutStoreView() {
       })
 
       // Evento GA4 de compra exitosa
-      trackPurchase(orden)
+      trackPurchase(orden, { tipoCliente: currentUser ? 'registrado' : 'invitado' })
 
       setIsPagoOpen(false)
       await recargarCarrito() // la API ya vació el carrito

@@ -8,6 +8,7 @@
 //   contexto se entera por alCerrarSesion.
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { ErrorApi, fetchUsuarioActual, fusionarCarrito, iniciarSesion, registrarUsuario } from '../services/api'
+import { trackLogin, trackSignUp } from '../services/analytics'
 import {
   alCerrarSesion,
   cerrarSesionLocal,
@@ -65,10 +66,17 @@ export function AuthProvider({ children }) {
     return { success: true, user: usuario }
   }, [])
 
-  const login = async (email, password) => abrirSesion(await iniciarSesion(email.trim(), password))
+  const login = async (email, password) => {
+    const sesion = await iniciarSesion(email.trim(), password)
+    trackLogin('email')
+    return abrirSesion(sesion)
+  }
 
-  const register = async (nombre, email, password) =>
-    abrirSesion(await registrarUsuario(nombre.trim(), email.trim(), password))
+  const register = async (nombre, email, password) => {
+    const sesion = await registrarUsuario(nombre.trim(), email.trim(), password)
+    trackSignUp('email')
+    return abrirSesion(sesion)
+  }
 
   const logout = async () => {
     // El JWT no se invalida en el servidor: basta con olvidarlo.

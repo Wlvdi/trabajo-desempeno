@@ -13,6 +13,7 @@ import { rutasAuth } from './rutas/auth.js'
 import { rutasCarrito } from './rutas/carrito.js'
 import { rutasCheckout } from './rutas/checkout.js'
 import { rutasOrdenes } from './rutas/ordenes.js'
+import { rutasVitals } from './rutas/vitals.js'
 import { rutaNoEncontrada, manejarErrores } from './middlewares/errores.js'
 import { crearMetricas, etiquetarPrefijo } from './metricas.js'
 
@@ -43,6 +44,7 @@ export function crearApp({ pool, pagoMock, metricas = crearMetricas({ pool }) })
   montar('/api/carrito', rutasCarrito(pool))
   montar('/api/checkout', rutasCheckout(pool, pagoMock === undefined ? { metricas } : { pagoMock, metricas }))
   montar('/api/ordenes', rutasOrdenes(pool))
+  montar('/api/vitals', rutasVitals({ metricas }))
 
   app.use(rutaNoEncontrada)
   app.use(manejarErrores)

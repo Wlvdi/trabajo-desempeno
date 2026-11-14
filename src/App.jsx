@@ -3,7 +3,7 @@ import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { CartProvider } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
-import { initGA, trackPageView } from './services/analytics'
+import { trackPageView } from './services/analytics'
 
 // Componentes de la Tienda
 import StoreNavbar from './components/store/StoreNavbar'
@@ -52,11 +52,6 @@ function StoreLayout({ children }) {
 }
 
 export default function App() {
-  useEffect(() => {
-    // Inicializar Google Analytics 4 y Core Web Vitals
-    initGA()
-  }, [])
-
   return (
     <BrowserRouter>
       <AnalyticsTracker />

@@ -16,6 +16,7 @@ import {
   Check
 } from 'lucide-react'
 import { fetchProductosPublicos, fetchCategorias, PRODUCTOS_POR_PAGINA } from '../../services/api'
+import { trackSearch, trackViewItemList } from '../../services/analytics'
 import { useCart } from '../../context/CartContext'
 
 /** Tope del deslizador de precio: en este valor el filtro queda "sin límite". */
@@ -117,6 +118,11 @@ export default function CatalogStoreView() {
   // Con texto de búsqueda el orden por defecto es "relevancia".
   const ordenEfectivo = buscando && orden === 'destacado' ? 'relevancia' : orden
 
+  // GA4: una búsqueda por cada término aplicado (después de la espera de escritura).
+  useEffect(() => {
+    if (busquedaAplicada) trackSearch(busquedaAplicada)
+  }, [busquedaAplicada])
+
   // Al cambiar cualquier filtro se vuelve a la página 1.
   useEffect(() => {
     setCurrentPage(1)
@@ -144,6 +150,10 @@ export default function CatalogStoreView() {
         const latency = Math.round(performance.now() - startTime)
         const payloadEst = Math.round((JSON.stringify(data).length / 1024) * 10) / 10
         setProductos(data.items)
+        // GA4: listado mostrado (catálogo o resultados de búsqueda), con su posición en la paginación.
+        trackViewItemList(busquedaAplicada ? 'Resultados de búsqueda' : 'Catálogo', data.items, {
+          desde: (currentPage - 1) * PRODUCTOS_POR_PAGINA
+        })
         setTotalProductos(data.total)
         setTotalPages(Math.max(1, data.totalPaginas))
         setBenchmarkMetrics({

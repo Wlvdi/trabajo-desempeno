@@ -19,6 +19,7 @@ import {
   Activity
 } from 'lucide-react'
 import { fetchHome } from '../../services/api'
+import { trackViewItemList } from '../../services/analytics'
 import { useCart } from '../../context/CartContext'
 
 export default function HomeStoreView() {
@@ -33,6 +34,7 @@ export default function HomeStoreView() {
     // Página LIVIANA: una sola petición (GET /api/home) con destacados y categorías.
     fetchHome().then(({ destacados: prods, categorias: cats }) => {
       setDestacados(prods.slice(0, 6)) // Se muestran 6 destacados en la portada
+      trackViewItemList('Destacados (home)', prods.slice(0, 6))
       setCategorias(cats)
       const endTime = performance.now()
       setLoadTimeMs(Math.round(endTime - startTime))

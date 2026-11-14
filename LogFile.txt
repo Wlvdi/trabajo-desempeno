@@ -712,3 +712,53 @@ RESUMEN DE LO GENERADO:
 COMMIT: df42ae9 refactor(frontend): consumir la API propia y quitar Supabase
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0010
+FECHA: 14-11-26 HORA: 19:25 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Explícame el diseño de la integración con Google Analytics 4 y
+aplícalo en este PC. Confirmo: respaldo de Web Vitals en la API
+(/api/vitals → Prometheus), escenario_prueba tomado de la URL
+(?escenario=) y tipo_cliente (invitado o registrado) en el evento
+purchase. Después de probarlo no aparecía nada en DebugView: revisa
+que debug_mode esté configurado.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: src/services/analytics.js reescrito. Sin ID no se carga
+  GA4 (se quitó el ID falso G-SUBLIGOLUTEM); debug_mode en desarrollo
+  o con VITE_GA_DEBUG=true; page_view manual (desactivar en GA4 los
+  cambios de página por historial); escenario_prueba desde ?escenario=
+  con gtag('set') para todos los eventos; initGA antes del primer
+  render (main.jsx). Eventos nuevos: view_item_list, search,
+  view_cart, add_shipping_info, add_payment_info, login y sign_up;
+  purchase con tipo_cliente; web_vitals con metric_name,
+  metric_value (CLS ×1000), metric_rating, metric_id y
+  escenario_prueba. Sin datos personales en los eventos.
+- Respaldo: POST /api/vitals (sendBeacon) → histogramas
+  api_web_vitals_segundos, api_web_vitals_cls y contador
+  api_web_vitals_total; métrica, página, escenario y calificación con
+  listas fijas (400 si no). Dashboard de Grafana con la fila
+  "Experiencia de usuario" (p75 por escenario; 30 paneles en total).
+- DebugView: debug_mode sí se envía en desarrollo; la causa era un
+  servidor de Vite iniciado antes de agregar VITE_GA_MEASUREMENT_ID
+  al .env (Vite lee el .env solo al arrancar). Se agrega un mensaje en
+  la consola con el ID y el estado de debug_mode, y un aviso si un
+  bloqueador impide cargar gtag.js.
+- Archivos nuevos: backend/src/rutas/vitals.js,
+  backend/tests/vitals.test.js, src/services/analytics.test.js.
+  Modificados: backend/src/{app,metricas}.js, src/main.jsx,
+  src/App.jsx, src/context/{AuthContext,CartContext}.jsx, vistas
+  Home, Catálogo, Carrito y Checkout, .env.example,
+  infra/grafana/dashboards/subligol.json.
+- Instalaciones: ninguna.
+- Tests: backend 295 OK (14 nuevos); frontend 61 OK (25 nuevos).
+- Build: npm run build OK; /api/vitals recibió 600 mediciones
+  sintéticas (204) y los 6 paneles nuevos devolvieron datos.
+COMMIT: pendiente
+DEPLOY: no
+==================================================================

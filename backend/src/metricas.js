@@ -21,6 +21,15 @@ const BUCKETS_HTTP = [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
 const BUCKETS_CONTRASENAS = [0.01, 0.025, 0.05, 0.1, 0.2, 0.35, 0.5, 1, 2]
 
 /**
+ * Buckets de Web Vitals de tiempo en segundos. Incluyen los umbrales
+ * oficiales: TTFB 0,8 s; FCP 1,8 s; LCP 2,5 s y 4 s; INP 0,2 s y 0,5 s.
+ */
+const BUCKETS_VITALS = [0.05, 0.1, 0.2, 0.3, 0.5, 0.8, 1, 1.5, 1.8, 2.5, 3, 4, 6, 10]
+
+/** Buckets de CLS (sin unidad); umbrales oficiales 0,1 y 0,25. */
+const BUCKETS_CLS = [0.01, 0.025, 0.05, 0.1, 0.15, 0.25, 0.5, 1]
+
+/**
  * @typedef {object} PoolObservable
  * @property {number} [totalCount]
  * @property {number} [idleCount]
@@ -96,6 +105,31 @@ export function crearMetricas({ pool, predeterminadas = true } = {}) {
     registers: [registro]
   })
 
+  // Web Vitals reportados por los navegadores (POST /api/vitals). Respaldo de
+  // GA4 para comparar la experiencia sin carga y bajo carga (guía, 6.2.2).
+  const webVitalsSegundos = new client.Histogram({
+    name: 'api_web_vitals_segundos',
+    help: 'Web Vitals de tiempo (LCP, INP, FCP, TTFB) en segundos, por página y escenario de prueba',
+    labelNames: ['metrica', 'pagina', 'escenario'],
+    buckets: BUCKETS_VITALS,
+    registers: [registro]
+  })
+
+  const webVitalsCls = new client.Histogram({
+    name: 'api_web_vitals_cls',
+    help: 'Cumulative Layout Shift (sin unidad), por página y escenario de prueba',
+    labelNames: ['pagina', 'escenario'],
+    buckets: BUCKETS_CLS,
+    registers: [registro]
+  })
+
+  const webVitalsTotal = new client.Counter({
+    name: 'api_web_vitals_total',
+    help: 'Mediciones de Web Vitals por métrica, calificación (good, needs-improvement, poor) y escenario',
+    labelNames: ['metrica', 'calificacion', 'escenario'],
+    registers: [registro]
+  })
+
   // Series en 0 desde el inicio: los gráficos de tasa no quedan vacíos.
   for (const resultado of ['ok', 'fallido']) logins.inc({ resultado }, 0)
   for (const resultado of ['ok', 'sin_stock', 'carrito_vacio', 'error']) compras.inc({ resultado }, 0)
@@ -117,7 +151,7 @@ export function crearMetricas({ pool, predeterminadas = true } = {}) {
     next()
   }
 
-  return { registro, medirHttp, duracionContrasenas, logins, compras }
+  return { registro, medirHttp, duracionContrasenas, logins, compras, webVitalsSegundos, webVitalsCls, webVitalsTotal }
 }
 
 /** @typedef {ReturnType<typeof crearMetricas>} Metricas */

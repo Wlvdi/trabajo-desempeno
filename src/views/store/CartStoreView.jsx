@@ -1,5 +1,5 @@
 // src/views/store/CartStoreView.jsx
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Trash2,
@@ -12,6 +12,7 @@ import {
   ArrowLeft
 } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
+import { trackViewCart } from '../../services/analytics'
 
 export default function CartStoreView() {
   const {
@@ -23,8 +24,18 @@ export default function CartStoreView() {
     costoEnvio,
     total,
     totalItemsCount,
-    iva
+    iva,
+    cargando
   } = useCart()
+
+  // GA4: view_cart una vez, cuando el carrito ya cargó desde la API.
+  const vistaRegistrada = useRef(false)
+  useEffect(() => {
+    if (!cargando && !vistaRegistrada.current && items.length > 0) {
+      vistaRegistrada.current = true
+      trackViewCart(items)
+    }
+  }, [cargando, items])
 
   const navigate = useNavigate()
 

@@ -6,7 +6,7 @@
 // - Con sesión: el carrito del usuario. Se recarga cada vez que cambia el usuario.
 // - Un 409 (stock insuficiente) se muestra como aviso con las unidades disponibles.
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
-import { trackAddToCart, trackRemoveFromCart } from '../services/analytics'
+import { trackAddToCart, trackRemoveFromCart, trackViewCart } from '../services/analytics'
 import {
   CARRITO_VACIO,
   ErrorApi,
@@ -104,7 +104,11 @@ export function CartProvider({ children }) {
 
   const clearCart = async () => ejecutar(() => vaciarCarrito())
 
-  const openCart = () => setIsCartOpen(true)
+  // El usuario abre el carrito lateral (al agregar un producto se abre solo y no cuenta como view_cart).
+  const openCart = () => {
+    setIsCartOpen(true)
+    trackViewCart(carrito.items)
+  }
   const closeCart = () => setIsCartOpen(false)
   const cerrarAviso = () => setAviso(null)
 
