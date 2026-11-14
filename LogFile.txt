@@ -52,3 +52,42 @@ RESUMEN DE LO GENERADO:
 COMMIT: a1b2c3d chore: configuración del agente, LogFile y archivos base
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0002
+FECHA: 14-11-26 HORA: 13:16 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Propón el plan para construir el backend propio (Node.js + Express +
+PostgreSQL en Docker) que reemplace a Supabase. Decisiones: backend en
+JavaScript; migrar también el panel de administración (después de la
+tienda); seguir tus recomendaciones (dejar el frontend en src/ por
+ahora y eliminar database/ al pasar el esquema a migraciones); la
+búsqueda parte sin índices para aplicarlos como mejora en la Fase 2.
+Comienza con el commit 1.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: plan de 10 commits (estructura, migraciones y seed,
+  catálogo/búsqueda, auth argon2+JWT, carrito persistente, checkout
+  transaccional con pago mock, métricas prom-client + Prometheus/
+  Grafana/exportadores, frontend sin Supabase, panel admin, docs).
+  Endpoints con peso distinto: home (liviana), listado (media),
+  detalle (pesada). Pool de PostgreSQL configurable (PG_POOL_MAX).
+- Commit 1 implementado:
+  backend/package.json, backend/src/{app,server,config}.js,
+  backend/src/db/pool.js, backend/src/rutas/salud.js,
+  backend/src/middlewares/errores.js, backend/Dockerfile,
+  backend/.dockerignore, docker-compose.yml (db PostgreSQL 16 con
+  pg_stat_statements + api), variables nuevas en .env.example,
+  script "test" en package.json raíz.
+- Instalaciones: express 5.3.0, pg 8.23.1; dev: vitest 5.1.0,
+  supertest 7.3.2.
+- Tests: backend/tests/salud.test.js (5 casos, OK).
+- Build: npm run build OK; docker compose up OK (db y api healthy,
+  GET /api/salud 200).
+COMMIT: pendiente
+DEPLOY: no
+==================================================================

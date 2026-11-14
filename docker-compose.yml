@@ -1,0 +1,44 @@
+# Subligol: API + PostgreSQL.
+# El monitoreo (Prometheus, Grafana y exportadores) se agrega en un commit posterior.
+# Uso: copiar .env.example a .env, completar y ejecutar `docker compose up -d`.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-subligol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_DB:-subligol}
+    # pg_stat_statements registra el costo de cada consulta (Fase 2).
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements
+      -c pg_stat_statements.track=all
+    volumes:
+      - datos_postgres:/var/lib/postgresql/data
+    # Solo accesible desde este equipo (desarrollo local y tests).
+    ports:
+      - "127.0.0.1:${POSTGRES_PUERTO_HOST:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${POSTGRES_USER:-subligol}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-subligol}
+      PG_POOL_MAX: ${PG_POOL_MAX:-10}
+    ports:
+      - "${API_PUERTO_HOST:-3000}:3000"
+
+volumes:
+  datos_postgres:
