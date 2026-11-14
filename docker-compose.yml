@@ -37,6 +37,12 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://${POSTGRES_USER:-subligol}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-subligol}
       PG_POOL_MAX: ${PG_POOL_MAX:-10}
+      # Autenticación: JWT (HS256) y parámetros de argon2id (vacío = valor por defecto de la librería).
+      JWT_SECRETO: ${JWT_SECRETO:?Define JWT_SECRETO en .env (mínimo 32 caracteres)}
+      JWT_EXPIRACION: ${JWT_EXPIRACION:-2h}
+      ARGON2_MEMORIA_KIB: ${ARGON2_MEMORIA_KIB:-}
+      ARGON2_ITERACIONES: ${ARGON2_ITERACIONES:-}
+      ARGON2_PARALELISMO: ${ARGON2_PARALELISMO:-}
     ports:
       - "${API_PUERTO_HOST:-3000}:3000"
 

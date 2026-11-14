@@ -10,6 +10,9 @@ const app = crearApp({ pool })
 
 const servidor = app.listen(config.puerto, () => {
   console.log(`[api] Subligol API escuchando en el puerto ${config.puerto} (${config.entorno})`)
+  if (config.jwt.secretoGenerado) {
+    console.warn('[api] JWT_SECRETO no está definido: se usa uno aleatorio y los tokens dejarán de valer al reiniciar.')
+  }
 })
 
 /**

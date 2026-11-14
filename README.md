@@ -92,6 +92,14 @@ Los reportes quedan en `carga/resultados/AAAA-MM-DD/`.
 
 ---
 
+## Mejoras de seguridad pendientes
+- **Límite de intentos (rate limiting)** en `POST /api/auth/login` y
+  `/api/auth/registro`: no se aplica por ahora porque interferiría con las
+  pruebas de carga de la Fase 2. Antes de exponer el sitio en producción
+  conviene limitar intentos por IP y por correo.
+
+---
+
 ## Convenciones
 - Ramas: `main` (siempre desplegable) y ramas cortas `feat/...`
 - Commits: Conventional Commits en español

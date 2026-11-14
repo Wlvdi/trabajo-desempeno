@@ -224,3 +224,114 @@ RESUMEN DE LO GENERADO:
 COMMIT: 417e1c1 feat(api): home, categorías, catálogo, detalle y búsqueda
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0005
+FECHA: 14-11-26 HORA: 15:25 (America/Santiago)
+INTEGRANTE: Rdonosokk
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+estado en 5 viñetas como indica AGENTS.md.
+
+Contexto: Subligol está migrando de Supabase a una API propia (Node.js +
+Express 5 + PostgreSQL 16 en Docker), en JavaScript ESM con JSDoc. Ya
+están hechos: commit 1 (estructura y /api/salud), commit 2 (migraciones
+y seed determinista; la tabla usuarios tiene email único sin importar
+mayúsculas, nombre, hash_contrasena y rol 'cliente'|'admin'), commit 3
+(catálogo: /api/home, /api/categorias, /api/productos, /api/buscar, con
+validación en backend/src/validacion.js) y la corrección del seed. El
+seed crea test001..test200@ejemplo.cl (contraseña SEED_CONTRASENA_CLIENTES)
+y admin@subligol.cl (SEED_CONTRASENA_ADMIN), con hash argon2id.
+
+Tarea: commit 4, registro e inicio de sesión con argon2 y JWT.
+
+Endpoints:
+1. POST /api/auth/registro { nombre, email, contrasena } → 201
+   { usuario, token }. El email se guarda recortado y en minúsculas.
+   Validaciones con 400 en español: email con formato válido (máximo 254),
+   nombre de 2 a 80 caracteres, contrasena de 8 a 128. Si el email ya
+   existe (sin importar mayúsculas) → 409. Siempre se crea con rol
+   'cliente' (ignorar cualquier rol enviado en el cuerpo).
+2. POST /api/auth/login { email, contrasena } → 200 { usuario, token }.
+   Credenciales incorrectas → 401 con el MISMO mensaje si el correo no
+   existe o si la contraseña es incorrecta. Si el correo no existe,
+   verifica igual contra un hash ficticio para que el tiempo de respuesta
+   no revele qué correos están registrados.
+3. GET /api/auth/yo con Authorization: Bearer <token> → 200 con el
+   usuario leído desde la base. Sin token, token inválido, alterado o
+   expirado → 401.
+- `usuario` en las respuestas = { id, email, nombre, rol }; nunca
+  devolver hash_contrasena.
+
+Diseño:
+- JWT con la librería jsonwebtoken, algoritmo HS256 fijado también al
+  verificar. Payload mínimo: sub (id) y rol. Variables de entorno:
+  JWT_SECRETO (obligatorio; si NODE_ENV=production y falta, la API no
+  arranca) y JWT_EXPIRACION (por defecto 2h). Agrégalas a config.js,
+  a .env.example y al servicio api de docker-compose.yml.
+- argon2id con parámetros configurables por entorno (ARGON2_MEMORIA_KIB,
+  ARGON2_ITERACIONES, ARGON2_PARALELISMO; por defecto los de la librería).
+  Motivo: el hash es caro en CPU y memoria, y el login será uno de los
+  cuellos de botella que mediremos en la Fase 2. Centraliza hashear y
+  verificar en un módulo (por ejemplo backend/src/seguridad/contrasenas.js)
+  y haz que seeds/seed.js use ese mismo módulo para que los parámetros
+  sean idénticos.
+- Middlewares en backend/src/middlewares/auth.js: autenticar (obligatorio,
+  deja req.usuario = { id, rol }), autenticarOpcional (para el carrito del
+  commit 5) y requerirRol('admin') (para el panel). Respuestas 401/403 en
+  JSON y en español.
+- Sin límite de intentos (rate limiting) por ahora: interferiría con las
+  pruebas de carga. Déjalo anotado como mejora de seguridad.
+- No toques el frontend ni agregues métricas (commits 8 y 7).
+
+Tests (Vitest + Supertest, base subligol_test con sembrar()):
+- registro OK (201, sin hash en la respuesta, rol cliente aunque se envíe
+  rol admin), duplicado con otras mayúsculas → 409, cada validación → 400;
+- login OK con test001@ejemplo.cl y admin@subligol.cl (rol admin),
+  contraseña incorrecta y correo inexistente → 401 con el mismo mensaje,
+  email con mayúsculas funciona;
+- /api/auth/yo: token válido → 200; sin token, malformado, firmado con
+  otro secreto, alterado, expirado y con algoritmo "none" → 401;
+- requerirRol: cliente → 403, admin → pasa;
+- módulo de contraseñas: hashea con argon2id y verifica.
+Los 101 tests existentes deben seguir pasando.
+
+Antes de escribir código, explícame el diseño (archivos a crear y
+modificar, librerías nuevas con versión, flujo de cada endpoint) y espera
+mi confirmación. Al terminar, ejecuta npm test, prueba con
+docker compose up -d --build y curl (registro, login, yo y los errores),
+y pregúntame si registro el prompt en LogFile.txt, si hago commit
+(feat(auth): registro e inicio de sesión con argon2 y JWT) y si hago
+deploy.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño confirmado: config.js pasa a leerConfig(env) puro; JWT_SECRETO
+  obligatorio en producción con mínimo 32 caracteres (si no, la API no
+  arranca); en desarrollo/test, si falta, secreto aleatorio por proceso
+  con aviso. JWT HS256 fijado al firmar y verificar, payload sub + rol.
+  autenticarOpcional responde 401 con token inválido (no lo trata como
+  anónimo). Registro sin SELECT previo: el índice único
+  uq_usuarios_email resuelve el 409 (código 23505), también con
+  registros simultáneos. Login con hash ficticio perezoso con los mismos
+  parámetros de argon2id. /yo lee el usuario desde la base (401 si ya no
+  existe). Rate limiting anotado como mejora pendiente en el README.
+- Archivos nuevos: backend/src/seguridad/{contrasenas,tokens}.js,
+  backend/src/middlewares/auth.js, backend/src/rutas/auth.js,
+  backend/tests/{auth,auth-middlewares,contrasenas,config}.test.js.
+  Modificados: backend/src/{config,app,server,validacion}.js,
+  backend/seeds/seed.js (usa hashear()), backend/vitest.config.js
+  (JWT_SECRETO de prueba), backend/package.json y package-lock.json,
+  docker-compose.yml (JWT_* y ARGON2_* en el servicio api),
+  .env.example, README.md. Fuera del repo: JWT_SECRETO aleatorio en .env.
+- Instalaciones: jsonwebtoken 9.0.3.
+- Tests: 163 casos en 13 archivos, OK (101 previos + 62 nuevos).
+- Build: docker compose up -d --build OK; curl a registro (201, 409,
+  400), login (200 cliente y admin, 401 con el mismo mensaje para clave
+  incorrecta y correo inexistente) y yo (200; 401 sin token, alterado y
+  alg none).
+COMMIT: feat(auth): registro e inicio de sesión con argon2 y JWT
+DEPLOY: no
+==================================================================

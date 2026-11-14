@@ -9,6 +9,7 @@ import { rutasHome } from './rutas/home.js'
 import { rutasCategorias } from './rutas/categorias.js'
 import { rutasProductos } from './rutas/productos.js'
 import { rutasBuscar } from './rutas/buscar.js'
+import { rutasAuth } from './rutas/auth.js'
 import { rutaNoEncontrada, manejarErrores } from './middlewares/errores.js'
 
 /**
@@ -26,6 +27,7 @@ export function crearApp({ pool }) {
   app.use('/api/categorias', rutasCategorias(pool))
   app.use('/api/productos', rutasProductos(pool))
   app.use('/api/buscar', rutasBuscar(pool))
+  app.use('/api/auth', rutasAuth(pool))
 
   app.use(rutaNoEncontrada)
   app.use(manejarErrores)

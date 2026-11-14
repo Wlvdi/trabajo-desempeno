@@ -1,6 +1,7 @@
 /**
- * Validación y conversión de parámetros de consulta (query string).
- * Cada función recibe el valor crudo de req.query y devuelve el valor ya
+ * Validación y conversión de parámetros de consulta (query string) y de
+ * campos del cuerpo JSON.
+ * Cada función recibe el valor crudo (req.query o req.body) y devuelve el valor ya
  * convertido, o lanza un ErrorValidacion (status 400) con un mensaje claro.
  */
 
@@ -162,4 +163,64 @@ export function paginacion(query) {
     pagina: entero('pagina', query.pagina, { min: 1, porDefecto: 1 }),
     limite: entero('limite', query.limite, { min: 1, max: LIMITE_MAXIMO, porDefecto: LIMITE_POR_DEFECTO })
   }
+}
+
+// -----------------------------------------------------------------------------
+// Cuerpo de la petición (JSON)
+// -----------------------------------------------------------------------------
+
+/** Largo máximo de un correo según RFC 5321. */
+export const LARGO_MAXIMO_EMAIL = 254
+
+// Validación pragmática: algo@algo.dominio, sin espacios.
+const REGEX_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Exige que el cuerpo sea un objeto JSON.
+ * @param {unknown} cuerpo
+ * @returns {Record<string, unknown>}
+ */
+export function cuerpoObjeto(cuerpo) {
+  if (cuerpo === null || typeof cuerpo !== 'object' || Array.isArray(cuerpo)) {
+    throw new ErrorValidacion('El cuerpo debe ser un objeto JSON')
+  }
+  return /** @type {Record<string, unknown>} */ (cuerpo)
+}
+
+/**
+ * Campo de texto obligatorio del cuerpo, con largo mínimo y máximo.
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @param {{ min: number, max: number, recortar?: boolean }} opciones
+ *   recortar: quita espacios al inicio y al final (no se usa en contraseñas)
+ * @returns {string}
+ */
+export function campoTexto(nombre, valor, { min, max, recortar = true }) {
+  if (typeof valor !== 'string') {
+    throw new ErrorValidacion(`El campo "${nombre}" es obligatorio y debe ser texto`)
+  }
+  const texto = recortar ? valor.trim() : valor
+  if (texto.length < min || texto.length > max) {
+    throw new ErrorValidacion(`El campo "${nombre}" debe tener entre ${min} y ${max} caracteres`)
+  }
+  return texto
+}
+
+/**
+ * Correo obligatorio: se recorta, se pasa a minúsculas y se valida el formato.
+ * @param {unknown} valor
+ * @returns {string}
+ */
+export function campoEmail(valor) {
+  if (typeof valor !== 'string' || valor.trim() === '') {
+    throw new ErrorValidacion('El campo "email" es obligatorio y debe ser texto')
+  }
+  const email = valor.trim().toLowerCase()
+  if (email.length > LARGO_MAXIMO_EMAIL) {
+    throw new ErrorValidacion(`El campo "email" admite como máximo ${LARGO_MAXIMO_EMAIL} caracteres`)
+  }
+  if (!REGEX_EMAIL.test(email)) {
+    throw new ErrorValidacion('El campo "email" no tiene un formato de correo válido')
+  }
+  return email
 }

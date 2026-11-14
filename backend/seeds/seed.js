@@ -9,7 +9,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import argon2 from 'argon2'
+import { hashear } from '../src/seguridad/contrasenas.js'
 import { generarDatos } from './generador.js'
 
 const RUTA_CSV_K6 = fileURLToPath(new URL('../../carga/k6/datos/usuarios.csv', import.meta.url))
@@ -49,11 +49,9 @@ export async function sembrar(pool, { contrasenaClientes, contrasenaAdmin, semil
   }
   const datos = generarDatos(semilla)
 
-  // Todos los clientes comparten contraseña: se calcula un solo hash (argon2id).
-  const [hashClientes, hashAdmin] = await Promise.all([
-    argon2.hash(contrasenaClientes, { type: argon2.argon2id }),
-    argon2.hash(contrasenaAdmin, { type: argon2.argon2id })
-  ])
+  // Todos los clientes comparten contraseña: se calcula un solo hash.
+  // Se usa el mismo módulo que la API, así los parámetros de argon2id son idénticos.
+  const [hashClientes, hashAdmin] = await Promise.all([hashear(contrasenaClientes), hashear(contrasenaAdmin)])
 
   // Stock inicial = unidades vendidas en el historial, para que ninguna venta
   // histórica deje el stock negativo. Al final se fija el stock objetivo.
