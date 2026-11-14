@@ -27,9 +27,9 @@ export default function StoreFooter() {
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-base font-bold text-white">Webpay Plus Transbank</h4>
+              <h4 className="text-base font-bold text-white">Pago simulado</h4>
               <p className="text-xs text-slate-400 mt-1">
-                Paga con Débito Redcompra, Tarjetas de Crédito bancarias en cuotas sin interés y Cuenta RUT de Banco Estado.
+                Sitio en entorno de pruebas: las compras se aprueban de forma simulada y no se cobra dinero real.
               </p>
             </div>
           </div>
@@ -100,13 +100,11 @@ export default function StoreFooter() {
               Pasarela de Pago
             </h5>
             <p className="text-xs text-slate-400 mb-3">
-              Ambiente de pruebas oficial Webpay Plus Transbank habilitado con tarjetas simuladas de débito y crédito.
+              Proyecto académico (INFB8091, UTEM): el checkout usa un pago simulado. No se procesan pagos reales ni se solicitan datos de tarjeta.
             </p>
             <div className="flex flex-wrap gap-2 text-xs">
-              <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-md font-mono">Webpay Plus</span>
-              <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-md font-mono">Redcompra</span>
-              <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-md font-mono">Cuenta RUT</span>
-              <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-md font-mono">Visa / Mastercard</span>
+              <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-md font-mono">Pago simulado</span>
+              <span className="px-2.5 py-1 bg-slate-800 text-slate-200 rounded-md font-mono">Sin cobros reales</span>
             </div>
           </div>
 

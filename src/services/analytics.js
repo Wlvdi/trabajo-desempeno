@@ -1,6 +1,7 @@
 // src/services/analytics.js
 // Integración oficial de Google Analytics 4 (GA4) y Core Web Vitals para Subligol (UTEM)
 import { onLCP, onINP, onCLS, onFCP, onTTFB } from 'web-vitals'
+import { ivaIncluido } from './precios'
 
 const GA_ID = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SUBLIGOLUTEM'
 
@@ -157,7 +158,8 @@ export function trackPurchase(orden) {
   window.gtag('event', 'purchase', {
     transaction_id: orden.codigo,
     value: Number(orden.total),
-    tax: Math.round(Number(orden.total) * 0.19),
+    // IVA contenido en el neto (los precios incluyen IVA; el envío no se grava aquí).
+    tax: ivaIncluido(orden.neto ?? Number(orden.total) - Number(orden.costo_envio || 0)),
     shipping: Number(orden.costo_envio || 0),
     currency: 'CLP',
     coupon: 'UTEM2026',

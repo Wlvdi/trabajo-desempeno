@@ -47,11 +47,11 @@ export default function StoreNavbar() {
           <div className="hidden sm:flex items-center gap-1.5 mx-auto">
             <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
             <span>
-              <strong>¡Despachos a todo Chile!</strong> Envío GRATIS en compras sobre <strong>$30.000 CLP</strong> • Pagos seguros con <strong>Webpay Plus</strong>
+              <strong>¡Despachos a todo Chile!</strong> Envío GRATIS en compras sobre <strong>$30.000 CLP</strong> • Pago simulado <strong>(entorno de pruebas)</strong>
             </span>
           </div>
           <div className="sm:hidden mx-auto text-center font-semibold">
-            🚀 Envíos a todo Chile • Pagos con Webpay Plus
+            🚀 Envíos a todo Chile • Pago simulado
           </div>
           <Link
             to="/admin"

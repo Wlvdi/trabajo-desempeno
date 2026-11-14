@@ -17,6 +17,7 @@ import {
   vaciarCarrito
 } from '../services/api'
 import { useAuth } from './AuthContext'
+import { ivaIncluido } from '../services/precios'
 
 const CartContext = createContext()
 
@@ -110,7 +111,8 @@ export function CartProvider({ children }) {
   // Montos en pesos chilenos (CLP); el subtotal viene de la API.
   const items = carrito.items
   const subtotal = Number(carrito.subtotal) || 0
-  const iva = Math.round(subtotal * 0.19) // 19% IVA incluido en el precio (solo informativo)
+  // IVA contenido en el subtotal: los precios ya incluyen IVA (solo informativo).
+  const iva = ivaIncluido(subtotal)
   const costoEnvio = subtotal >= UMBRAL_ENVIO_GRATIS || subtotal === 0 ? 0 : COSTO_ENVIO
   const total = subtotal + costoEnvio
   const totalItemsCount = Number(carrito.total_unidades) || 0

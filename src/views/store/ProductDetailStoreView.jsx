@@ -211,7 +211,7 @@ export default function ProductDetailStoreView() {
               )}
             </div>
 
-            {/* Precio en CLP y Simulador Webpay */}
+            {/* Precio en CLP */}
             <div className="pt-2">
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl font-black text-slate-900">
@@ -220,17 +220,17 @@ export default function ProductDetailStoreView() {
                 <span className="text-xs text-slate-400 font-semibold">IVA incluido</span>
               </div>
 
-              {/* Banner de Cuotas Webpay */}
+              {/* Aviso de pago simulado (entorno de pruebas) */}
               <div className="mt-3 p-3 bg-red-50/60 border border-red-100 rounded-2xl flex items-center gap-3 text-xs text-slate-700">
                 <div className="bg-red-600 text-white p-2 rounded-xl">
                   <CreditCard className="w-4 h-4" />
                 </div>
                 <div>
                   <p className="font-bold text-slate-900">
-                    Hasta 3 cuotas sin interés de {formatCLP(Math.round(producto.precio_venta / 3))}
+                    Pago simulado – entorno de pruebas
                   </p>
                   <p className="text-[11px] text-slate-500">
-                    Con tarjetas de crédito bancarias mediante Transbank Webpay Plus
+                    Compra de demostración: no se cobra dinero real ni se solicitan datos de tarjeta.
                   </p>
                 </div>
               </div>

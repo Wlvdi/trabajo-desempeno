@@ -93,7 +93,7 @@ export default function AuthModal() {
           <p className="text-xs text-indigo-100 mt-1">
             {authModalTab === 'login'
               ? 'Inicia sesión para gestionar tus pedidos y agilizar tu compra.'
-              : 'Regístrate para comprar con Webpay Plus y guardar tu historial.'}
+              : 'Regístrate para comprar y guardar tu historial de pedidos.'}
           </p>
         </div>
 

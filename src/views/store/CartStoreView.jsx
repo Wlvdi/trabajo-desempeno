@@ -23,7 +23,8 @@ export default function CartStoreView() {
     subtotal,
     costoEnvio,
     total,
-    totalItemsCount
+    totalItemsCount,
+    iva
   } = useCart()
 
   const [cupon, setCupon] = useState('')
@@ -84,7 +85,7 @@ export default function CartStoreView() {
             Carrito de Compras ({totalItemsCount} productos)
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
-            Revisa tus artículos antes de continuar al checkout seguro con Webpay Plus.
+            Revisa tus artículos antes de continuar al checkout (pago simulado en entorno de pruebas).
           </p>
         </div>
         <button
@@ -242,7 +243,7 @@ export default function CartStoreView() {
               </div>
               <div className="flex justify-between text-slate-400 text-[11px]">
                 <span>IVA Estimado (19% incl.):</span>
-                <span>{formatCLP(Math.round(subtotal * 0.19))}</span>
+                <span>{formatCLP(iva)}</span>
               </div>
 
               <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline text-base font-black text-slate-900">
@@ -263,9 +264,9 @@ export default function CartStoreView() {
             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5 text-[11px] text-slate-500">
               <div className="flex items-center gap-1.5 font-semibold text-slate-700">
                 <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                <span>Transbank Webpay Plus Oficial</span>
+                <span>Pago simulado – entorno de pruebas</span>
               </div>
-              <p>Ambiente de integración listo para pagos simulados con tarjetas bancarias chilenas.</p>
+              <p>La compra se aprueba de forma simulada: no se cobra dinero real ni se solicitan datos de tarjeta.</p>
             </div>
           </div>
         </div>

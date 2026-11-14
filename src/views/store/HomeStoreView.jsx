@@ -96,7 +96,7 @@ export default function HomeStoreView() {
             </h1>
 
             <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-lg">
-              Tazas de cerámica AAA, poleras tacto algodón, botellas térmicas y souvenirs listos para estampar. Entregas rápidas en todo Chile y pagos protegidos con Transbank Webpay Plus.
+              Tazas de cerámica AAA, poleras tacto algodón, botellas térmicas y souvenirs listos para estampar. Entregas rápidas en todo Chile. Tienda en entorno de pruebas con pago simulado.
             </p>
 
             <div className="flex flex-wrap items-center gap-3 pt-2">

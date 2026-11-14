@@ -232,7 +232,7 @@ export default function CartDrawer() {
               </div>
 
               <p className="text-[11px] text-center text-slate-400">
-                🔒 Pago cifrado con Transbank Webpay Plus
+                Pago simulado – entorno de pruebas (sin cobros reales)
               </p>
             </div>
           )}
