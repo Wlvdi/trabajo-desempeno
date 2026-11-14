@@ -97,11 +97,39 @@ describe('initGA', () => {
     expect(config[2]).toEqual({ send_page_view: false, debug_mode: true })
   })
 
+  it('con debug activo, cada evento lleva debug_mode: true (DebugView)', async () => {
+    simularNavegador()
+    const ga = await cargarAnalitica()
+    ga.initGA({ id: 'G-PRUEBA123', debug: true })
+    ga.trackPageView('/catalogo', 'Catálogo')
+    ga.trackSearch('taza')
+    expect(eventos().map((e) => e.params.debug_mode)).toEqual([true, true])
+  })
+
+  it('una copia nueva del módulo (recarga en caliente de Vite) conserva debug_mode y escenario', async () => {
+    simularNavegador({ url: 'http://localhost:5173/?escenario=normal' })
+    const original = await cargarAnalitica()
+    original.initGA({ id: 'G-PRUEBA123', debug: true })
+    const recargado = await cargarAnalitica() // initGA no se vuelve a ejecutar
+    expect(recargado).not.toBe(original)
+    recargado.trackSearch('taza')
+    expect(evento('search')).toEqual({ search_term: 'taza', debug_mode: true })
+    expect(recargado.escenarioPrueba()).toBe('normal')
+  })
+
+  it('sin debug, los eventos NO llevan debug_mode (ni siquiera false)', async () => {
+    simularNavegador()
+    const ga = await cargarAnalitica()
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
+    ga.trackSearch('taza')
+    expect(evento('search')).not.toHaveProperty('debug_mode')
+  })
+
   it('se inicializa una sola vez', async () => {
     const { scripts } = simularNavegador()
     const ga = await cargarAnalitica()
-    ga.initGA({ id: 'G-PRUEBA123' })
-    ga.initGA({ id: 'G-PRUEBA123' })
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
     expect(scripts).toHaveLength(1)
   })
 })
@@ -110,7 +138,7 @@ describe('escenario_prueba', () => {
   it('se toma de ?escenario=, se recuerda y se aplica a todos los eventos con gtag("set")', async () => {
     const { almacen } = simularNavegador({ url: 'http://localhost:5173/?escenario=estres' })
     const ga = await cargarAnalitica()
-    ga.initGA({ id: 'G-PRUEBA123' })
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
     expect(ga.escenarioPrueba()).toBe('estres')
     expect(almacen.get('subligol_escenario_prueba')).toBe('estres')
     const set = window.dataLayer.map((a) => Array.from(a)).find((a) => a[0] === 'set')
@@ -137,7 +165,7 @@ describe('Web Vitals', () => {
   it('envía el evento web_vitals con el formato de la guía y el respaldo a /api/vitals', async () => {
     const { balizas } = simularNavegador({ url: 'http://localhost:5173/producto/abc?escenario=normal' })
     const ga = await cargarAnalitica()
-    ga.initGA({ id: 'G-PRUEBA123' })
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
     callbacksVitals.LCP({ name: 'LCP', value: 1834.6, rating: 'good', id: 'v1-1' })
 
     expect(evento('web_vitals')).toEqual({
@@ -158,7 +186,7 @@ describe('Web Vitals', () => {
   it('CLS se escala ×1000 en GA4 y se envía sin escalar a la API', async () => {
     const { balizas } = simularNavegador({ url: 'http://localhost:5173/' })
     const ga = await cargarAnalitica()
-    ga.initGA({ id: 'G-PRUEBA123' })
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
     callbacksVitals.CLS({ name: 'CLS', value: 0.123, rating: 'needs-improvement', id: 'v1-2' })
     expect(evento('web_vitals').metric_value).toBe(123)
     expect(JSON.parse(await balizas[0].cuerpo.text())).toMatchObject({ metrica: 'CLS', valor: 0.123, pagina: 'home' })
@@ -182,7 +210,7 @@ describe('Eventos de e-commerce', () => {
   beforeEach(async () => {
     simularNavegador()
     ga = await cargarAnalitica()
-    ga.initGA({ id: 'G-PRUEBA123' })
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
   })
 
   it('view_item_list con nombre de lista e índice según la paginación', () => {
@@ -242,6 +270,62 @@ describe('Eventos de e-commerce', () => {
     ga.trackSignUp()
     expect(evento('login')).toEqual({ method: 'email' })
     expect(evento('sign_up')).toEqual({ method: 'email' })
+  })
+
+  it('una vista repetida idéntica en menos de 1 s se envía una sola vez (React.StrictMode)', () => {
+    ga.trackViewItem(producto)
+    ga.trackViewItem(producto)
+    expect(eventos().filter((e) => e.nombre === 'view_item')).toHaveLength(1)
+  })
+
+  it('una vista repetida después de 1 s sí se vuelve a enviar', () => {
+    vi.useFakeTimers()
+    try {
+      ga.trackViewItem(producto)
+      vi.advanceTimersByTime(1500)
+      ga.trackViewItem(producto)
+      expect(eventos().filter((e) => e.nombre === 'view_item')).toHaveLength(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('las acciones nunca se descartan aunque se repitan (dos clics = dos add_to_cart)', () => {
+    ga.trackAddToCart(producto, 1)
+    ga.trackAddToCart(producto, 1)
+    expect(eventos().filter((e) => e.nombre === 'add_to_cart')).toHaveLength(2)
+  })
+
+  it('remove_from_cart acepta varios items (vaciar carrito) y suma su valor', () => {
+    ga.trackRemoveFromCart([item, { ...producto, sku: 'X', precio_venta: 1000, cantidad: 3 }])
+    const p = evento('remove_from_cart')
+    expect(p.value).toBe(4990 * 2 + 1000 * 3)
+    expect(p.items.map((i) => i.quantity)).toEqual([2, 3])
+  })
+
+  it('datos incompletos no rompen el envío (sin NaN, valores por defecto)', () => {
+    ga.trackAddToCart({ id: 'p9' }, 1)
+    expect(evento('add_to_cart')).toEqual({
+      currency: 'CLP', value: 0,
+      items: [{ item_id: 'p9', item_name: 'Producto sin nombre', price: 0, quantity: 1 }]
+    })
+    expect(() => ga.trackRemoveFromCart(undefined)).not.toThrow()
+    expect(() => ga.trackViewCart(undefined)).not.toThrow()
+  })
+
+  it('un error dentro de gtag no se propaga a la tienda', () => {
+    const original = window.gtag
+    window.gtag = () => {
+      throw new Error('gtag roto')
+    }
+    const aviso = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(() => ga.trackLogin()).not.toThrow()
+      expect(aviso).toHaveBeenCalled()
+    } finally {
+      window.gtag = original
+      aviso.mockRestore()
+    }
   })
 
   it('ningún evento incluye datos personales', () => {

@@ -97,12 +97,24 @@ export function CartProvider({ children }) {
     return ok
   }
 
+  // Botones + y −: GA4 recibe add_to_cart o remove_from_cart con las unidades de diferencia.
   const updateQuantity = async (productoId, cantidad) => {
     if (cantidad <= 0) return removeFromCart(productoId)
-    return ejecutar(() => cambiarCantidadCarrito(productoId, cantidad))
+    const item = carrito.items.find((i) => String(i.id) === String(productoId))
+    const ok = await ejecutar(() => cambiarCantidadCarrito(productoId, cantidad))
+    const diferencia = item ? cantidad - item.cantidad : 0
+    if (ok && diferencia > 0) trackAddToCart(item, diferencia)
+    if (ok && diferencia < 0) trackRemoveFromCart({ ...item, cantidad: -diferencia })
+    return ok
   }
 
-  const clearCart = async () => ejecutar(() => vaciarCarrito())
+  // Vaciar: un solo remove_from_cart con todos los productos que había.
+  const clearCart = async () => {
+    const itemsAntes = carrito.items
+    const ok = await ejecutar(() => vaciarCarrito())
+    if (ok) trackRemoveFromCart(itemsAntes)
+    return ok
+  }
 
   // El usuario abre el carrito lateral (al agregar un producto se abre solo y no cuenta como view_cart).
   const openCart = () => {

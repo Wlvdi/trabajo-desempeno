@@ -21,11 +21,30 @@ const MONEDA = 'CLP'
 export const ESCENARIOS = Object.freeze(['real', 'baja', 'normal', 'estres', 'piloto', 'humo'])
 const CLAVE_ESCENARIO = 'subligol_escenario_prueba'
 
-let inicializado = false
-let escenarioActual = 'real'
+/**
+ * Estado de GA4 de la página. Se guarda en window (no en variables del
+ * módulo) porque Vite, al recargar un archivo en caliente (HMR), crea una
+ * copia nueva de este módulo en la que initGA() no se ejecutó: los eventos
+ * saldrían sin debug_mode ni escenario_prueba y no se verían en DebugView.
+ * @returns {{ inicializado: boolean, depuracion: boolean, escenario: string }}
+ */
+function estado() {
+  if (typeof window === 'undefined') return { inicializado: false, depuracion: false, escenario: 'real' }
+  window.__subligolGA ??= { inicializado: false, depuracion: false, escenario: 'real' }
+  return window.__subligolGA
+}
 
 /** Entorno de Vite (en los tests puede no existir). */
 const env = () => import.meta.env ?? {}
+
+/**
+ * Eventos de VISTA que se descartan si se repiten idénticos en menos de 1 s.
+ * En desarrollo, React.StrictMode ejecuta dos veces los efectos y duplicaría
+ * page_view, view_item, etc. Las acciones (add_to_cart, purchase...) nunca
+ * se descartan: dos clics seguidos son dos acciones reales.
+ */
+const EVENTOS_DE_VISTA = new Set(['page_view', 'view_item_list', 'view_item', 'view_cart', 'search', 'begin_checkout'])
+const VENTANA_DUPLICADO_MS = 1000
 
 /** Muestra el evento en la consola solo en desarrollo. */
 function registrarEnConsola(nombre, parametros) {
@@ -38,9 +57,29 @@ function registrarEnConsola(nombre, parametros) {
  * @param {Record<string, unknown>} [parametros]
  */
 export function emitir(nombre, parametros = {}) {
+  // La analítica nunca debe romper la tienda: cualquier error se registra y se ignora.
+  try {
+    enviarEvento(nombre, parametros)
+  } catch (err) {
+    console.warn(`[GA4] No se pudo enviar ${nombre}:`, err)
+  }
+}
+
+function enviarEvento(nombre, parametros) {
+  if (EVENTOS_DE_VISTA.has(nombre)) {
+    const ga = estado()
+    const clave = nombre + JSON.stringify(parametros)
+    const ahora = Date.now()
+    if (ga.ultimaVista?.clave === clave && ahora - ga.ultimaVista.instante < VENTANA_DUPLICADO_MS) return
+    ga.ultimaVista = { clave, instante: ahora }
+  }
   registrarEnConsola(nombre, parametros)
   if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-    window.gtag('event', nombre, parametros)
+    // debug_mode en CADA evento: solo en config no siempre marca los eventos
+    // enviados a mano (y aquí todos lo son, incluido page_view). Así llevan
+    // _dbg=1 y aparecen en DebugView. Fuera de depuración no se envía (un
+    // debug_mode: false también activaría el modo depuración).
+    window.gtag('event', nombre, estado().depuracion ? { ...parametros, debug_mode: true } : parametros)
   }
 }
 
@@ -68,7 +107,7 @@ export function leerEscenario() {
 }
 
 /** Escenario de prueba de esta visita. */
-export const escenarioPrueba = () => escenarioActual
+export const escenarioPrueba = () => estado().escenario
 
 // ---------------------------------------------------------------------------
 // Inicialización
@@ -83,9 +122,12 @@ export function initGA({
   id = env().VITE_GA_MEASUREMENT_ID,
   debug = Boolean(env().DEV) || env().VITE_GA_DEBUG === 'true'
 } = {}) {
-  if (typeof window === 'undefined' || inicializado) return
-  inicializado = true
-  escenarioActual = leerEscenario()
+  if (typeof window === 'undefined' || estado().inicializado) return
+  const ga = estado()
+  ga.inicializado = true
+  ga.escenario = leerEscenario()
+  ga.depuracion = Boolean(id) && Boolean(debug)
+  const escenarioActual = ga.escenario
 
   if (id) {
     window.dataLayer = window.dataLayer || []
@@ -144,10 +186,10 @@ export function reportarVital({ name, value, rating, id }) {
     metric_value: name === 'CLS' ? Math.round(value * 1000) : Math.round(value), // CLS escalado ×1000; el resto en ms
     metric_rating: rating, // good | needs-improvement | poor
     metric_id: id,
-    escenario_prueba: escenarioActual,
+    escenario_prueba: estado().escenario,
     non_interaction: true
   })
-  enviarVitalALaApi({ metrica: name, valor: value, calificacion: rating, pagina: paginaActual(), escenario: escenarioActual })
+  enviarVitalALaApi({ metrica: name, valor: value, calificacion: rating, pagina: paginaActual(), escenario: estado().escenario })
 }
 
 /**
@@ -193,18 +235,25 @@ export function trackPageView(path, title) {
 // E-commerce (nombres y parámetros recomendados por GA4; guía, tabla 4.1)
 // ---------------------------------------------------------------------------
 
+/** Número finito o el valor por defecto (evita enviar NaN a GA4). */
+const numero = (valor, porDefecto = 0) => {
+  const n = Number(valor)
+  return Number.isFinite(n) ? n : porDefecto
+}
+
 /**
  * Producto (de la API o del carrito) en el formato "item" de GA4.
+ * Con datos incompletos no falla: precio 0 y cantidad 1 por defecto.
  * @param {Record<string, any>} p
  * @param {{ cantidad?: number, index?: number, lista?: string }} [extra]
  */
 export function aItem(p, { cantidad, index, lista } = {}) {
   const item = {
-    item_id: p.sku || p.producto_id || p.id,
-    item_name: p.nombre,
-    item_category: p.categoria_nombre || p.categoria?.nombre || undefined,
-    price: Number(p.precio_venta ?? p.precio_unitario),
-    quantity: Number(cantidad ?? p.cantidad ?? 1)
+    item_id: String(p?.sku || p?.producto_id || p?.id || 'sin_id'),
+    item_name: p?.nombre || 'Producto sin nombre',
+    item_category: p?.categoria_nombre || p?.categoria?.nombre || undefined,
+    price: numero(p?.precio_venta ?? p?.precio_unitario),
+    quantity: Math.max(1, numero(cantidad ?? p?.cantidad, 1))
   }
   if (index !== undefined) item.index = index
   if (lista) item.item_list_name = lista
@@ -213,7 +262,7 @@ export function aItem(p, { cantidad, index, lista } = {}) {
 }
 
 /** Valor total (precio × cantidad) de una lista de items del carrito. */
-const valorDe = (items) => items.reduce((s, i) => s + Number(i.precio_venta) * Number(i.cantidad || 1), 0)
+const valorDe = (items) => items.reduce((s, i) => s + numero(i?.precio_venta) * numero(i?.cantidad, 1), 0)
 
 /**
  * view_item_list: se muestra un listado (catálogo, búsqueda, destacados).
@@ -240,7 +289,7 @@ export function trackViewItem(producto) {
   if (!producto) return
   emitir('view_item', {
     currency: MONEDA,
-    value: Number(producto.precio_venta),
+    value: numero(producto.precio_venta),
     items: [aItem(producto, { cantidad: 1 })]
   })
 }
@@ -249,18 +298,20 @@ export function trackAddToCart(producto, cantidad = 1) {
   if (!producto) return
   emitir('add_to_cart', {
     currency: MONEDA,
-    value: Number(producto.precio_venta) * cantidad,
+    value: numero(producto.precio_venta) * numero(cantidad, 1),
     items: [aItem(producto, { cantidad })]
   })
 }
 
-export function trackRemoveFromCart(item) {
-  if (!item) return
-  emitir('remove_from_cart', {
-    currency: MONEDA,
-    value: Number(item.precio_venta) * Number(item.cantidad || 1),
-    items: [aItem(item)]
-  })
+/**
+ * remove_from_cart: se quita un producto, se baja su cantidad (item.cantidad
+ * = unidades quitadas) o se vacía el carrito (lista de items).
+ * @param {object | object[]} itemOItems
+ */
+export function trackRemoveFromCart(itemOItems) {
+  const items = (Array.isArray(itemOItems) ? itemOItems : [itemOItems]).filter(Boolean)
+  if (!items.length) return
+  emitir('remove_from_cart', { currency: MONEDA, value: valorDe(items), items: items.map((i) => aItem(i)) })
 }
 
 /** view_cart: se abre el carrito (página o carrito lateral). */
@@ -271,7 +322,7 @@ export function trackViewCart(items) {
 
 export function trackBeginCheckout(items, total) {
   if (!items?.length) return
-  emitir('begin_checkout', { currency: MONEDA, value: Number(total), items: items.map((i) => aItem(i)) })
+  emitir('begin_checkout', { currency: MONEDA, value: numero(total), items: items.map((i) => aItem(i)) })
 }
 
 /** add_shipping_info: se confirman los datos de despacho. */
@@ -279,8 +330,8 @@ export function trackAddShippingInfo(items, total, costoEnvio) {
   if (!items?.length) return
   emitir('add_shipping_info', {
     currency: MONEDA,
-    value: Number(total),
-    shipping_tier: Number(costoEnvio) === 0 ? 'envio_gratis' : 'envio_estandar',
+    value: numero(total),
+    shipping_tier: numero(costoEnvio) === 0 ? 'envio_gratis' : 'envio_estandar',
     items: items.map((i) => aItem(i))
   })
 }
@@ -290,7 +341,7 @@ export function trackAddPaymentInfo(items, total) {
   if (!items?.length) return
   emitir('add_payment_info', {
     currency: MONEDA,
-    value: Number(total),
+    value: numero(total),
     payment_type: 'simulado',
     items: items.map((i) => aItem(i))
   })
@@ -304,12 +355,12 @@ export function trackAddPaymentInfo(items, total) {
  */
 export function trackPurchase(orden, { tipoCliente } = {}) {
   if (!orden) return
-  const envio = Number(orden.costo_envio || 0)
+  const envio = numero(orden.costo_envio)
   emitir('purchase', {
     transaction_id: orden.codigo,
-    value: Number(orden.total),
+    value: numero(orden.total),
     // IVA contenido en el neto (los precios incluyen IVA; el envío no se grava aquí).
-    tax: ivaIncluido(orden.neto ?? Number(orden.total) - envio),
+    tax: ivaIncluido(orden.neto ?? numero(orden.total) - envio),
     shipping: envio,
     currency: MONEDA,
     ...(tipoCliente ? { tipo_cliente: tipoCliente } : {}),
