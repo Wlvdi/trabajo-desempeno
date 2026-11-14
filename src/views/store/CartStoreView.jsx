@@ -1,5 +1,5 @@
 // src/views/store/CartStoreView.jsx
-import React, { useState } from 'react'
+import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Trash2,
@@ -9,7 +9,6 @@ import {
   ArrowRight,
   Truck,
   ShieldCheck,
-  Tag,
   ArrowLeft
 } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
@@ -27,9 +26,6 @@ export default function CartStoreView() {
     iva
   } = useCart()
 
-  const [cupon, setCupon] = useState('')
-  const [descuentoCupon, setDescuentoCupon] = useState(0)
-  const [mensajeCupon, setMensajeCupon] = useState(null)
   const navigate = useNavigate()
 
   const formatCLP = (val) => {
@@ -40,19 +36,6 @@ export default function CartStoreView() {
     }).format(Number(val) || 0)
   }
 
-  const handleAplicarCupon = (e) => {
-    e.preventDefault()
-    if (cupon.trim().toUpperCase() === 'UTEM2026' || cupon.trim().toUpperCase() === 'SUBLIGOL10') {
-      const desc = Math.round(subtotal * 0.10)
-      setDescuentoCupon(desc)
-      setMensajeCupon({ tipo: 'exito', texto: '¡Cupón aplicado con éxito! 10% de descuento.' })
-    } else {
-      setDescuentoCupon(0)
-      setMensajeCupon({ tipo: 'error', texto: 'Cupón inválido o expirado. Prueba con UTEM2026.' })
-    }
-  }
-
-  const totalFinal = Math.max(0, total - descuentoCupon)
 
   if (items.length === 0) {
     return (
@@ -191,46 +174,13 @@ export default function CartStoreView() {
               Resumen del Pedido
             </h3>
 
-            {/* Cupón de Descuento */}
-            <form onSubmit={handleAplicarCupon} className="space-y-2">
-              <label className="block text-xs font-bold text-slate-700 flex items-center gap-1">
-                <Tag className="w-3.5 h-3.5 text-indigo-600" />
-                <span>¿Tienes un cupón? (Prueba: UTEM2026)</span>
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={cupon}
-                  onChange={(e) => setCupon(e.target.value)}
-                  placeholder="CÓDIGO"
-                  className="flex-1 uppercase font-mono px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:border-indigo-600 focus:outline-hidden"
-                />
-                <button
-                  type="submit"
-                  className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition"
-                >
-                  Aplicar
-                </button>
-              </div>
-              {mensajeCupon && (
-                <p className={`text-[11px] font-semibold ${mensajeCupon.tipo === 'exito' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                  {mensajeCupon.texto}
-                </p>
-              )}
-            </form>
 
             {/* Desglose */}
-            <div className="space-y-2.5 text-xs text-slate-600 pt-2 border-t border-slate-100">
+            <div className="space-y-2.5 text-xs text-slate-600">
               <div className="flex justify-between">
-                <span>Subtotal Neto:</span>
+                <span>Subtotal (IVA incluido):</span>
                 <span className="font-semibold text-slate-900">{formatCLP(subtotal)}</span>
               </div>
-              {descuentoCupon > 0 && (
-                <div className="flex justify-between text-emerald-600 font-bold">
-                  <span>Descuento Cupón (10%):</span>
-                  <span>-{formatCLP(descuentoCupon)}</span>
-                </div>
-              )}
               <div className="flex justify-between">
                 <span>Despacho a Domicilio:</span>
                 <span className="font-semibold text-slate-900">
@@ -248,7 +198,7 @@ export default function CartStoreView() {
 
               <div className="pt-3 border-t border-slate-200 flex justify-between items-baseline text-base font-black text-slate-900">
                 <span>Total a Pagar (CLP):</span>
-                <span className="text-xl text-indigo-600">{formatCLP(totalFinal)}</span>
+                <span className="text-xl text-indigo-600">{formatCLP(total)}</span>
               </div>
             </div>
 

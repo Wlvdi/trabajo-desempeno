@@ -162,7 +162,6 @@ export function trackPurchase(orden) {
     tax: ivaIncluido(orden.neto ?? Number(orden.total) - Number(orden.costo_envio || 0)),
     shipping: Number(orden.costo_envio || 0),
     currency: 'CLP',
-    coupon: 'UTEM2026',
     items: (orden.items || []).map(i => ({
       item_id: i.sku || i.producto_id,
       item_name: i.nombre,
