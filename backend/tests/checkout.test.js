@@ -62,7 +62,7 @@ describe('POST /api/checkout: compra exitosa', () => {
     expect(res.status).toBe(201)
     const orden = res.body
     expect(Object.keys(orden).sort()).toEqual(
-      ['codigo', 'codigo_autorizacion', 'costo_envio', 'despacho', 'estado', 'fecha', 'id', 'items', 'medio_pago',
+      ['cliente_email', 'codigo', 'codigo_autorizacion', 'costo_envio', 'despacho', 'estado', 'fecha', 'id', 'items', 'medio_pago',
         'neto', 'total'].sort()
     )
     expect(orden).toMatchObject({ estado: 'PAGADO', medio_pago: 'mock', despacho: DESPACHO })
@@ -193,8 +193,10 @@ describe('POST /api/checkout: errores', () => {
     expect((await comprar()).status).toBe(400)
   })
 
-  it('sin sesión → 401', async () => {
-    expect((await comprar(undefined, null)).status).toBe(401)
+  it('sin sesión ni email → 400 (la compra como invitado exige despacho.email)', async () => {
+    const res = await comprar(undefined, null)
+    expect(res.status).toBe(400)
+    expect(res.body.error).toMatch(/despacho\.email/)
   })
 
   it('pago simulado deshabilitado → 400 y sin cambios', async () => {

@@ -11,7 +11,10 @@ import {
   fetchProductos,
   pedir,
   procesarOrdenWeb,
-  urlBase
+  urlBase,
+  esOrdenDeInvitado,
+  fetchOrdenById,
+  fetchUltimoDespacho
 } from './api'
 import {
   alCerrarSesion,
@@ -265,5 +268,74 @@ describe('fetchProductosPublicos', () => {
     const f = simularFetch({ cuerpo: { items: [] } })
     await fetchProductosPublicos({ busqueda: 't' })
     expect(new URL(llamada(f).url, 'http://x').pathname).toBe('/api/productos')
+  })
+})
+
+describe('Compra como invitado', () => {
+  const ORDEN_ID = '9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d'
+  const TOKEN_ORDEN = '11111111-2222-4333-8444-555555555555'
+  const DESPACHO = {
+    nombre: 'Ana', apellido: 'Rojas', telefono: '+56912345678',
+    region: 'Región Metropolitana', comuna: 'Ñuñoa', direccion: 'Av. Siempre Viva 742', email: 'ana@ejemplo.cl'
+  }
+
+  it('envía el email del invitado y el X-Carrito-Id, sin Authorization', async () => {
+    guardarCarritoAnonimo(ID_CARRITO)
+    const f = simularFetch({ status: 201, cuerpo: { id: ORDEN_ID, codigo: 'SUB-2026-500000', token_consulta: TOKEN_ORDEN } })
+    await procesarOrdenWeb({ despacho: DESPACHO })
+    const { opciones, cabeceras } = llamada(f)
+    expect(JSON.parse(opciones.body)).toEqual({ medio_pago: 'mock', despacho: DESPACHO })
+    expect(cabeceras['X-Carrito-Id']).toBe(ID_CARRITO)
+    expect(cabeceras.Authorization).toBeUndefined()
+  })
+
+  it('guarda el token de la orden y lo envía al consultarla después', async () => {
+    simularFetch({ status: 201, cuerpo: { id: ORDEN_ID, token_consulta: TOKEN_ORDEN } })
+    await procesarOrdenWeb({ despacho: DESPACHO })
+    expect(esOrdenDeInvitado(ORDEN_ID)).toBe(true)
+
+    const f = simularFetch({ cuerpo: { id: ORDEN_ID } })
+    await fetchOrdenById(ORDEN_ID)
+    expect(llamada(f).cabeceras['X-Orden-Token']).toBe(TOKEN_ORDEN)
+  })
+
+  it('una orden sin token guardado se consulta sin X-Orden-Token', async () => {
+    const f = simularFetch({ cuerpo: {} })
+    await fetchOrdenById('00000000-0000-4000-8000-000000000000')
+    expect(llamada(f).cabeceras['X-Orden-Token']).toBeUndefined()
+    expect(esOrdenDeInvitado('00000000-0000-4000-8000-000000000000')).toBe(false)
+  })
+
+  it('una compra con sesión (sin token_consulta) no guarda nada', async () => {
+    guardarSesion({ token: 'jwt', usuario: USUARIO })
+    simularFetch({ status: 201, cuerpo: { id: 'otra-orden' } })
+    await procesarOrdenWeb({ despacho: DESPACHO })
+    expect(esOrdenDeInvitado('otra-orden')).toBe(false)
+  })
+})
+
+describe('fetchUltimoDespacho', () => {
+  it('sin sesión devuelve null sin llamar a la API', async () => {
+    const f = simularFetch()
+    expect(await fetchUltimoDespacho()).toBeNull()
+    expect(f).not.toHaveBeenCalled()
+  })
+
+  it('con sesión devuelve el despacho del último pedido', async () => {
+    guardarSesion({ token: 'jwt', usuario: USUARIO })
+    const despacho = { region: 'Biobío', comuna: 'Concepción', direccion: 'Calle Soto 1234' }
+    const f = simularFetch(
+      { cuerpo: { items: [{ id: 'orden-1' }], total: 3 } },
+      { cuerpo: { id: 'orden-1', despacho } }
+    )
+    expect(await fetchUltimoDespacho()).toEqual(despacho)
+    expect(llamada(f, 0).url).toBe('/api/ordenes?pagina=1&limite=1')
+    expect(llamada(f, 1).url).toBe('/api/ordenes/orden-1')
+  })
+
+  it('con sesión y sin pedidos devuelve null', async () => {
+    guardarSesion({ token: 'jwt', usuario: USUARIO })
+    simularFetch({ cuerpo: { items: [], total: 0 } })
+    expect(await fetchUltimoDespacho()).toBeNull()
   })
 })

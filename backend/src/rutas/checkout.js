@@ -1,6 +1,11 @@
 /**
- * POST /api/checkout (requiere sesión): convierte el carrito del usuario en
- * una orden pagada, en UNA sola transacción.
+ * POST /api/checkout: convierte el carrito en una orden pagada, en UNA sola
+ * transacción. Admite dos modos:
+ * - Con sesión (Authorization: Bearer): usa el carrito del usuario; el
+ *   email de contacto es el de su cuenta.
+ * - Como invitado (sin sesión): usa el carrito anónimo (X-Carrito-Id) y
+ *   exige despacho.email. La respuesta incluye token_consulta, que permite
+ *   ver la orden después (cabecera X-Orden-Token en GET /api/ordenes/:id).
  *
  * IMPORTANTE para la Fase 2: el checkout mantiene una conexión del pool
  * desde el BEGIN hasta el COMMIT, incluidas las esperas por bloqueos de
@@ -10,8 +15,8 @@
  * de pedir la conexión.
  *
  * Flujo dentro de la transacción:
- *  1. set_config('app.usuario_id') para la auditoría.
- *  2. Bloquear el carrito del usuario (FOR UPDATE). Vacío → 400.
+ *  1. set_config('app.usuario_id') para la auditoría (solo con sesión).
+ *  2. Bloquear el carrito (del usuario o el anónimo) con FOR UPDATE. Vacío → 400.
  *  3. Bloquear sus productos con FOR UPDATE en orden de id (sin deadlocks).
  *  4. Validar activo y stock. Si alguno no alcanza → 409 con la lista y
  *     ROLLBACK (sin cambios en la base).
@@ -20,13 +25,13 @@
  *     triggers descuentan stock y auditan VENTA_SALIDA) y vaciar el carrito.
  */
 import { Router } from 'express'
-import { autenticar } from '../middlewares/auth.js'
+import { autenticarOpcional } from '../middlewares/auth.js'
 import { ErrorHttp } from '../middlewares/errores.js'
 import { enTransaccion } from '../db/transaccion.js'
-import { buscarCarritoDeUsuario, vaciarCarrito } from '../consultas/carrito.js'
+import { buscarCarritoAnonimo, buscarCarritoDeUsuario, vaciarCarrito } from '../consultas/carrito.js'
 import { bloquearLineasDelCarrito, insertarDetalle, insertarVenta, leerOrden } from '../consultas/ordenes.js'
 import { MEDIOS_PAGO, autorizarPagoMock, costoEnvio, exigirMedioDisponible } from '../pagos.js'
-import { ErrorValidacion, campoTexto, cuerpoObjeto } from '../validacion.js'
+import { ErrorValidacion, campoEmail, campoTexto, cuerpoObjeto, uuidOpcional } from '../validacion.js'
 import { config } from '../config.js'
 
 /** Código de PostgreSQL para violación de CHECK (stock_actual >= 0). */
@@ -36,11 +41,14 @@ const REGEX_TELEFONO = /^\+?[0-9 ()-]+$/
 
 /**
  * Valida el cuerpo del checkout. Los campos de despacho coinciden con los
- * de CheckoutStoreView.jsx; rut y email no se guardan (el email ya está en
- * la cuenta y el RUT no es necesario para la orden).
+ * de CheckoutStoreView.jsx. El email solo se lee en la compra como invitado
+ * (con sesión se usa el de la cuenta) y se guarda en ventas.cliente_email,
+ * no dentro de despacho.
  * @param {unknown} cuerpoCrudo
+ * @param {{ invitado?: boolean }} [opciones]
+ * @returns {{ medioPago: string, despacho: Record<string, string>, email: string | null }}
  */
-export function leerCuerpoCheckout(cuerpoCrudo) {
+export function leerCuerpoCheckout(cuerpoCrudo, { invitado = false } = {}) {
   const cuerpo = cuerpoObjeto(cuerpoCrudo)
 
   if (typeof cuerpo.medio_pago !== 'string' || !MEDIOS_PAGO.includes(cuerpo.medio_pago)) {
@@ -66,7 +74,14 @@ export function leerCuerpoCheckout(cuerpoCrudo) {
   if (d.depto !== undefined && d.depto !== null && !(typeof d.depto === 'string' && d.depto.trim() === '')) {
     despacho.depto = campoTexto('despacho.depto', d.depto, { min: 1, max: 50 })
   }
-  return { medioPago: cuerpo.medio_pago, despacho }
+  let email = null
+  if (invitado) {
+    if (typeof d.email !== 'string' || d.email.trim() === '') {
+      throw new ErrorValidacion('El campo "despacho.email" es obligatorio para comprar sin cuenta')
+    }
+    email = campoEmail(d.email)
+  }
+  return { medioPago: cuerpo.medio_pago, despacho, email }
 }
 
 /**
@@ -93,18 +108,22 @@ const aCentavos = (monto) => Math.round(monto * 100)
 export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {}) {
   const router = Router()
 
-  router.post('/', autenticar, async (req, res) => {
+  router.post('/', autenticarOpcional, async (req, res) => {
     // Validaciones baratas antes de ocupar una conexión del pool.
-    const { medioPago, despacho } = leerCuerpoCheckout(req.body)
+    const usuarioId = req.usuario?.id ?? null
+    const invitado = usuarioId === null
+    const { medioPago, despacho, email } = leerCuerpoCheckout(req.body, { invitado })
     exigirMedioDisponible(medioPago, { pagoMock })
-    const usuarioId = req.usuario.id
+    const idCarritoAnonimo = invitado ? uuidOpcional('X-Carrito-Id', req.get('X-Carrito-Id')) : undefined
 
     let orden
     try {
       orden = await enTransaccion(pool, async (db) => {
-        await db.query("select set_config('app.usuario_id', $1, true)", [usuarioId])
+        if (!invitado) await db.query("select set_config('app.usuario_id', $1, true)", [usuarioId])
 
-        const carritoId = await buscarCarritoDeUsuario(db, usuarioId, { bloquear: true })
+        let carritoId = null
+        if (!invitado) carritoId = await buscarCarritoDeUsuario(db, usuarioId, { bloquear: true })
+        else if (idCarritoAnonimo) carritoId = await buscarCarritoAnonimo(db, idCarritoAnonimo, { bloquear: true })
         const lineas = carritoId ? await bloquearLineasDelCarrito(db, carritoId) : []
         if (lineas.length === 0) throw new ErrorHttp(400, 'El carrito está vacío')
 
@@ -133,8 +152,9 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
 
         const pago = autorizarPagoMock(total)
 
-        const ventaId = await insertarVenta(db, {
+        const venta = await insertarVenta(db, {
           usuarioId,
+          clienteEmail: email ?? undefined,
           medioPago,
           codigoAutorizacion: pago.codigo_autorizacion,
           costoEnvio: envio,
@@ -143,7 +163,7 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
           clienteNombre: `${despacho.nombre} ${despacho.apellido}`
         })
         try {
-          await insertarDetalle(db, ventaId, detalle)
+          await insertarDetalle(db, venta.id, detalle)
         } catch (err) {
           // Segunda barrera: el CHECK de stock no debería saltar porque los
           // productos están bloqueados y validados, pero si salta es un 409.
@@ -152,7 +172,9 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
         }
         await vaciarCarrito(db, carritoId)
 
-        return leerOrden(db, ventaId, { usuarioId, esAdmin: false })
+        const orden = await leerOrden(db, venta.id, { usuarioId, token: venta.token_consulta })
+        // Solo el invitado recibe el token: con sesión, la orden se ve con el JWT.
+        return invitado ? { ...orden, token_consulta: venta.token_consulta } : orden
       })
     } catch (err) {
       metricas?.compras.inc({ resultado: resultadoCompra(err) })

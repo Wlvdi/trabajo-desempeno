@@ -43,19 +43,23 @@ export async function bloquearLineasDelCarrito(db, carritoId) {
 /**
  * Inserta la venta web con código SUB-AAAA-NNNNNN (año en hora de Chile y
  * número de la secuencia seq_codigo_venta, migración 003).
+ * - Con sesión (usuarioId): cliente_id y usuario_id = el usuario, y el email
+ *   de contacto es el de su cuenta.
+ * - Como invitado (usuarioId null): sin cliente_id y con clienteEmail.
  * @param {Consultable} db
- * @param {{ usuarioId: string, medioPago: string, codigoAutorizacion: string, costoEnvio: number,
- *   total: number, despacho: Record<string, string>, clienteNombre: string }} venta
- * @returns {Promise<string>} id de la venta
+ * @param {{ usuarioId: string | null, clienteEmail?: string, medioPago: string, codigoAutorizacion: string,
+ *   costoEnvio: number, total: number, despacho: Record<string, string>, clienteNombre: string }} venta
+ * @returns {Promise<{ id: string, token_consulta: string }>}
  */
 export async function insertarVenta(db, venta) {
   const { rows } = await db.query(
     `insert into ventas (codigo, canal_venta, estado, medio_pago, codigo_autorizacion,
-                         costo_envio, total, despacho, cliente_id, usuario_id, cliente_nombre)
+                         costo_envio, total, despacho, cliente_id, usuario_id, cliente_nombre, cliente_email)
      values ('SUB-' || to_char(now() at time zone 'America/Santiago', 'YYYY') || '-'
                || lpad(nextval('seq_codigo_venta')::text, 6, '0'),
-             'Web', 'PAGADO', $1, $2, $3, $4, $5, $6, $6, $7)
-     returning id`,
+             'Web', 'PAGADO', $1, $2, $3, $4, $5, $6, $6, $7,
+             coalesce($8, (select email from usuarios where id = $6)))
+     returning id, token_consulta`,
     [
       venta.medioPago,
       venta.codigoAutorizacion,
@@ -63,10 +67,11 @@ export async function insertarVenta(db, venta) {
       venta.total,
       JSON.stringify(venta.despacho),
       venta.usuarioId,
-      venta.clienteNombre
+      venta.clienteNombre,
+      venta.clienteEmail ?? null
     ]
   )
-  return rows[0].id
+  return rows[0]
 }
 
 /**
@@ -91,16 +96,17 @@ export async function insertarDetalle(db, ventaId, lineas) {
 }
 
 /**
- * Orden completa con sus items. Solo la devuelve si pertenece al usuario o
- * si `esAdmin`; en otro caso devuelve null (la ruta responde 404).
+ * Orden completa con sus items. Solo la devuelve si pertenece al usuario,
+ * si `esAdmin`, o si `token` coincide con su token_consulta (invitado); en
+ * otro caso devuelve null (la ruta responde 404).
  * @param {Consultable} db
  * @param {string} ventaId
- * @param {{ usuarioId: string, esAdmin: boolean }} acceso
+ * @param {{ usuarioId?: string | null, esAdmin?: boolean, token?: string | null }} acceso
  * @returns {Promise<object | null>}
  */
-export async function leerOrden(db, ventaId, { usuarioId, esAdmin }) {
+export async function leerOrden(db, ventaId, { usuarioId = null, esAdmin = false, token = null }) {
   const { rows } = await db.query(
-    `select v.id, v.codigo, v.fecha, v.estado, v.medio_pago, v.codigo_autorizacion,
+    `select v.id, v.codigo, v.fecha, v.estado, v.medio_pago, v.codigo_autorizacion, v.cliente_email,
             (v.total - v.costo_envio)::float8 as neto, v.costo_envio::float8 as costo_envio,
             v.total::float8 as total, v.despacho,
             coalesce((
@@ -114,13 +120,14 @@ export async function leerOrden(db, ventaId, { usuarioId, esAdmin }) {
                where dv.venta_id = v.id
             ), '[]') as items
        from ventas v
-      where v.id = $1 and (v.cliente_id = $2 or $3)`,
-    [ventaId, usuarioId, esAdmin]
+      where v.id = $1 and (v.cliente_id = $2::uuid or $3 or v.token_consulta = $4::uuid)`,
+    [ventaId, usuarioId, esAdmin, token]
   )
   if (!rows[0]) return null
-  const { id, codigo, fecha, estado, medio_pago, codigo_autorizacion, items, neto, costo_envio, total, despacho } =
-    rows[0]
-  return { id, codigo, fecha, estado, medio_pago, codigo_autorizacion, items, neto, costo_envio, total, despacho }
+  const { id, codigo, fecha, estado, medio_pago, codigo_autorizacion, cliente_email, items, neto, costo_envio, total,
+    despacho } = rows[0]
+  return { id, codigo, fecha, estado, medio_pago, codigo_autorizacion, cliente_email, items, neto, costo_envio, total,
+    despacho }
 }
 
 /**

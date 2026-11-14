@@ -13,8 +13,10 @@
 import {
   cerrarSesionLocal,
   guardarCarritoAnonimo,
+  guardarOrdenInvitado,
   obtenerCarritoAnonimo,
-  obtenerToken
+  obtenerToken,
+  obtenerTokenOrden
 } from './sesion'
 
 const CABECERA_CARRITO = 'X-Carrito-Id'
@@ -58,13 +60,14 @@ function armarQuery(query = {}) {
  * Hace una petición a la API.
  * @param {string} metodo
  * @param {string} ruta por ejemplo '/productos'
- * @param {{ cuerpo?: unknown, query?: Record<string, unknown> }} [opciones]
+ * @param {{ cuerpo?: unknown, query?: Record<string, unknown>, cabeceras?: Record<string, string> }} [opciones]
+ *   cabeceras: cabeceras adicionales (por ejemplo X-Orden-Token)
  * @returns {Promise<any>} cuerpo JSON de la respuesta
  */
-export async function pedir(metodo, ruta, { cuerpo, query } = {}) {
+export async function pedir(metodo, ruta, { cuerpo, query, cabeceras: extra = {} } = {}) {
   const token = obtenerToken()
   const carritoAnonimo = obtenerCarritoAnonimo()
-  const cabeceras = { Accept: 'application/json' }
+  const cabeceras = { Accept: 'application/json', ...extra }
   if (cuerpo !== undefined) cabeceras['Content-Type'] = 'application/json'
   if (token) cabeceras.Authorization = `Bearer ${token}`
   if (carritoAnonimo) cabeceras[CABECERA_CARRITO] = carritoAnonimo
@@ -245,15 +248,46 @@ export async function fusionarCarrito() {
 
 /**
  * POST /api/checkout con pago simulado (medio_pago "mock").
- * La API usa el carrito del usuario y los precios actuales.
+ * - Con sesión: usa el carrito del usuario; el email es el de la cuenta.
+ * - Como invitado: usa el carrito anónimo y exige despacho.email. La API
+ *   devuelve token_consulta, que se guarda para volver a ver la orden.
  * @param {{ despacho: { nombre: string, apellido: string, telefono: string, region: string,
- *   comuna: string, direccion: string, depto?: string } }} datos
+ *   comuna: string, direccion: string, depto?: string, email?: string } }} datos
  * @returns {Promise<object>} la orden creada
  */
-export const procesarOrdenWeb = ({ despacho }) => pedir('POST', '/checkout', { cuerpo: { medio_pago: 'mock', despacho } })
+export async function procesarOrdenWeb({ despacho }) {
+  const orden = await pedir('POST', '/checkout', { cuerpo: { medio_pago: 'mock', despacho } })
+  if (orden?.token_consulta) guardarOrdenInvitado(orden.id, orden.token_consulta)
+  return orden
+}
 
-/** GET /api/ordenes/:id (solo el dueño o un admin). */
-export const fetchOrdenById = (id) => pedir('GET', `/ordenes/${encodeURIComponent(id)}`)
+/**
+ * GET /api/ordenes/:id. La ve el dueño, un admin o, si la orden se compró
+ * como invitado en este navegador, quien tenga su token (X-Orden-Token).
+ */
+export function fetchOrdenById(id) {
+  const tokenOrden = obtenerTokenOrden(id)
+  return pedir('GET', `/ordenes/${encodeURIComponent(id)}`, {
+    cabeceras: tokenOrden ? { 'X-Orden-Token': tokenOrden } : {}
+  })
+}
+
+/** ¿Esta orden se compró como invitado en este navegador? */
+export const esOrdenDeInvitado = (id) => obtenerTokenOrden(id) !== null
+
+/**
+ * Datos de despacho del último pedido del usuario con sesión, para
+ * completar el checkout. Devuelve null sin sesión o si no tiene pedidos.
+ * @returns {Promise<Record<string, string> | null>}
+ */
+export async function fetchUltimoDespacho() {
+  if (!obtenerToken()) return null
+  const lista = await pedir('GET', '/ordenes', { query: { pagina: 1, limite: 1 } })
+  const ultima = lista?.items?.[0]
+  if (!ultima) return null
+  const orden = await pedir('GET', `/ordenes/${encodeURIComponent(ultima.id)}`)
+  return orden?.despacho && typeof orden.despacho === 'object' ? orden.despacho : null
+}
 
 /** GET /api/ordenes paginado: { items, total, pagina, limite, totalPaginas } */
 export const fetchMisOrdenes = ({ pagina = 1, limite = 10 } = {}) => pedir('GET', '/ordenes', { query: { pagina, limite } })

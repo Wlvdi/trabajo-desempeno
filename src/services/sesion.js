@@ -2,13 +2,17 @@
 // Datos de sesión guardados en el navegador (localStorage):
 // - token JWT de la API propia,
 // - usuario { id, email, nombre, rol } para pintar la interfaz al cargar,
-// - id del carrito anónimo (cabecera X-Carrito-Id).
+// - id del carrito anónimo (cabecera X-Carrito-Id),
+// - tokens de las órdenes compradas como invitado (cabecera X-Orden-Token).
 // Todo acceso a localStorage va en try/catch: en modo privado o con el
 // almacenamiento bloqueado la tienda sigue funcionando (sin recordar nada).
 
 const CLAVE_TOKEN = 'subligol_token'
 const CLAVE_USUARIO = 'subligol_auth_user'
 const CLAVE_CARRITO = 'subligol_carrito_id'
+const CLAVE_ORDENES_INVITADO = 'subligol_ordenes_invitado'
+/** Órdenes de invitado que se recuerdan en este navegador (las más recientes). */
+const MAXIMO_ORDENES_INVITADO = 20
 
 function leer(clave) {
   try {
@@ -59,6 +63,34 @@ export const obtenerCarritoAnonimo = () => leer(CLAVE_CARRITO)
 
 /** @param {string | null} id */
 export const guardarCarritoAnonimo = (id) => escribir(CLAVE_CARRITO, id)
+
+/** @returns {Record<string, string>} { idOrden: token } */
+function leerOrdenesInvitado() {
+  try {
+    const datos = JSON.parse(leer(CLAVE_ORDENES_INVITADO) || '{}')
+    return datos && typeof datos === 'object' && !Array.isArray(datos) ? datos : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Recuerda el token de una orden comprada como invitado, para poder volver
+ * a verla en este navegador (por ejemplo, al recargar la página de la orden).
+ * @param {string} idOrden
+ * @param {string} token
+ */
+export function guardarOrdenInvitado(idOrden, token) {
+  const ordenes = { ...leerOrdenesInvitado(), [idOrden]: token }
+  const recientes = Object.entries(ordenes).slice(-MAXIMO_ORDENES_INVITADO)
+  escribir(CLAVE_ORDENES_INVITADO, JSON.stringify(Object.fromEntries(recientes)))
+}
+
+/**
+ * @param {string} idOrden
+ * @returns {string | null} token de consulta de una orden de invitado
+ */
+export const obtenerTokenOrden = (idOrden) => leerOrdenesInvitado()[idOrden] ?? null
 
 /** @type {Set<() => void>} */
 const suscriptores = new Set()

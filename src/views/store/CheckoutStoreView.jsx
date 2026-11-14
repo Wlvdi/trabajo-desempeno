@@ -14,11 +14,13 @@ import {
   FileText,
   AlertCircle,
   Building,
-  Sparkles
+  Sparkles,
+  LogIn,
+  UserCheck
 } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
-import { procesarOrdenWeb } from '../../services/api'
+import { fetchUltimoDespacho, procesarOrdenWeb } from '../../services/api'
 import { trackBeginCheckout, trackPurchase } from '../../services/analytics'
 import PagoSimuladoModal from '../../components/store/PagoSimuladoModal'
 
@@ -52,14 +54,20 @@ export default function CheckoutStoreView() {
   const navigate = useNavigate()
 
   // Formulario de despacho: los mismos campos que valida POST /api/checkout.
-  // El RUT y las notas no se piden porque la API no los guarda; el correo es el de la cuenta.
-  const [nombre, setNombre] = useState(currentUser?.nombre?.split(' ')[0] || '')
-  const [apellido, setApellido] = useState(currentUser?.nombre?.split(' ').slice(1).join(' ') || '')
-  const [telefono, setTelefono] = useState('+56 9 8765 4321')
-  const [direccion, setDireccion] = useState('Av. Dieciocho 390')
-  const [depto, setDepto] = useState('Oficina 402')
-  const [region, setRegion] = useState('Región Metropolitana de Santiago')
-  const [comuna, setComuna] = useState('Santiago')
+  // - Con cuenta: nombre y correo salen de la cuenta, y la dirección del último pedido.
+  // - Como invitado: se completa a mano y el correo es obligatorio.
+  // El RUT y las notas no se piden porque la API no los guarda.
+  const [nombre, setNombre] = useState('')
+  const [apellido, setApellido] = useState('')
+  const [emailInvitado, setEmailInvitado] = useState('')
+  const [telefono, setTelefono] = useState('')
+  const [direccion, setDireccion] = useState('')
+  const [depto, setDepto] = useState('')
+  const [region, setRegion] = useState(REGIONES_CHILE[0].nombre)
+  const [comuna, setComuna] = useState(REGIONES_CHILE[0].comunas[0])
+  /** true si el usuario ya eligió región, comuna o dirección (no se pisan al autocompletar). */
+  const direccionEditada = useRef(false)
+  const [autocompletado, setAutocompletado] = useState(false)
 
   // Pago simulado
   const [isPagoOpen, setIsPagoOpen] = useState(false)
@@ -68,16 +76,43 @@ export default function CheckoutStoreView() {
   const [faltantes, setFaltantes] = useState(null)
   const [procesandoFinal, setProcesandoFinal] = useState(false)
 
-  // Al iniciar sesión desde el checkout se completa el nombre si estaba vacío.
+  // Con cuenta: completa los campos vacíos con el nombre de la cuenta y los
+  // datos de despacho del último pedido (todo queda editable).
   useEffect(() => {
-    if (!currentUser) return
+    if (!currentUser) {
+      setAutocompletado(false)
+      return
+    }
+    let cancelado = false
     const [primero, ...resto] = (currentUser.nombre || '').split(' ')
     setNombre((n) => n || primero || '')
     setApellido((a) => a || resto.join(' '))
-  }, [currentUser])
+    fetchUltimoDespacho()
+      .then((d) => {
+        if (cancelado || !d) return
+        setNombre((n) => n || d.nombre || '')
+        setApellido((a) => a || d.apellido || '')
+        setTelefono((t) => t || d.telefono || '')
+        if (!direccionEditada.current) {
+          if (d.region) setRegion(d.region)
+          if (d.comuna) setComuna(d.comuna)
+          setDireccion((x) => x || d.direccion || '')
+          setDepto((x) => x || d.depto || '')
+        }
+        setAutocompletado(true)
+      })
+      .catch((err) => console.warn('No se pudo leer el último pedido:', err.message))
+    return () => {
+      cancelado = true
+    }
+  }, [currentUser?.id])
 
-  // Obtener comunas de la región seleccionada
-  const comunasDisponibles = REGIONES_CHILE.find(r => r.nombre === region)?.comunas || []
+  // Regiones y comunas: si el último pedido trae una que no está en la lista, se agrega.
+  const regionesOpciones = REGIONES_CHILE.some((r) => r.nombre === region)
+    ? REGIONES_CHILE
+    : [...REGIONES_CHILE, { nombre: region, comunas: [comuna] }]
+  const comunasRegion = regionesOpciones.find((r) => r.nombre === region)?.comunas || []
+  const comunasDisponibles = comunasRegion.includes(comuna) ? comunasRegion : [comuna, ...comunasRegion]
 
   const formatCLP = (val) => {
     return new Intl.NumberFormat('es-CL', {
@@ -102,9 +137,8 @@ export default function CheckoutStoreView() {
     setErrorCheckout(null)
     setFaltantes(null)
 
-    if (!currentUser) {
-      setErrorCheckout('Inicia sesión para completar la compra. Tu carrito se conservará.')
-      openAuthModal('login')
+    if (!currentUser && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInvitado.trim())) {
+      setErrorCheckout('Ingresa un correo válido para recibir la confirmación de tu compra.')
       return
     }
     if (!nombre.trim() || !apellido.trim() || !telefono.trim() || !direccion.trim()) {
@@ -126,7 +160,9 @@ export default function CheckoutStoreView() {
           region,
           comuna,
           direccion: direccion.trim(),
-          ...(depto.trim() ? { depto: depto.trim() } : {})
+          ...(depto.trim() ? { depto: depto.trim() } : {}),
+          // Solo el invitado envía el correo; con cuenta se usa el de la cuenta.
+          ...(currentUser ? {} : { email: emailInvitado.trim() })
         }
       })
 
@@ -144,8 +180,7 @@ export default function CheckoutStoreView() {
         setErrorCheckout('Algunos productos ya no tienen stock suficiente. Ajusta tu carrito para continuar.')
         recargarCarrito()
       } else if (err.status === 401) {
-        setErrorCheckout('Tu sesión expiró. Inicia sesión de nuevo para completar la compra.')
-        openAuthModal('login')
+        setErrorCheckout('Tu sesión expiró. Inicia sesión de nuevo o continúa como invitado.')
       } else {
         setErrorCheckout(err.message || 'No se pudo completar la compra.')
       }
@@ -205,6 +240,40 @@ export default function CheckoutStoreView() {
         </div>
       )}
 
+      {/* ¿Cómo quieres comprar? */}
+      {currentUser ? (
+        <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-3">
+          <UserCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+          <span>
+            Comprando con tu cuenta <strong>{currentUser.email}</strong>.
+            {autocompletado
+              ? ' Completamos tus datos con los de tu último pedido; revísalos antes de pagar.'
+              : ' Completa tus datos de despacho.'}
+          </span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/40 text-xs space-y-1">
+            <p className="font-extrabold text-slate-900 flex items-center gap-2">
+              <User className="w-4 h-4 text-indigo-600" />
+              Comprar como invitado
+            </p>
+            <p className="text-slate-600">Completa el formulario; solo necesitas un correo para la confirmación.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => openAuthModal('login')}
+            className="p-4 rounded-2xl border border-slate-200 bg-white hover:border-indigo-300 text-left text-xs space-y-1 transition"
+          >
+            <p className="font-extrabold text-slate-900 flex items-center gap-2">
+              <LogIn className="w-4 h-4 text-indigo-600" />
+              ¿Ya tienes cuenta? Inicia sesión
+            </p>
+            <p className="text-slate-600">Completamos tus datos automáticamente y guardamos el pedido en tu historial.</p>
+          </button>
+        </div>
+      )}
+
       <form onSubmit={handleContinuarAlPago} className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         {/* Formulario de Despacho (2 columnas) */}
@@ -245,6 +314,8 @@ export default function CheckoutStoreView() {
                 <input
                   type="tel"
                   value={telefono}
+                  placeholder="+56 9 1234 5678"
+                  autoComplete="tel"
                   onChange={(e) => setTelefono(e.target.value)}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
                   required
@@ -252,14 +323,30 @@ export default function CheckoutStoreView() {
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Correo de la cuenta</label>
-                <input
-                  type="email"
-                  value={currentUser?.email || ''}
-                  placeholder="Inicia sesión para continuar"
-                  readOnly
-                  className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500"
-                />
+                {currentUser ? (
+                  <>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Correo de la cuenta</label>
+                    <input
+                      type="email"
+                      value={currentUser.email}
+                      readOnly
+                      className="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-500"
+                    />
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Correo electrónico *</label>
+                    <input
+                      type="email"
+                      value={emailInvitado}
+                      onChange={(e) => setEmailInvitado(e.target.value)}
+                      placeholder="tu@correo.cl"
+                      autoComplete="email"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
+                      required
+                    />
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -278,13 +365,14 @@ export default function CheckoutStoreView() {
                   value={region}
                   onChange={(e) => {
                     const r = e.target.value
+                    direccionEditada.current = true
                     setRegion(r)
-                    const primeraComuna = REGIONES_CHILE.find(x => x.nombre === r)?.comunas[0] || ''
+                    const primeraComuna = regionesOpciones.find(x => x.nombre === r)?.comunas[0] || ''
                     setComuna(primeraComuna)
                   }}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
                 >
-                  {REGIONES_CHILE.map(r => (
+                  {regionesOpciones.map(r => (
                     <option key={r.nombre} value={r.nombre}>{r.nombre}</option>
                   ))}
                 </select>
@@ -294,7 +382,10 @@ export default function CheckoutStoreView() {
                 <label className="block text-xs font-bold text-slate-700 mb-1">Comuna *</label>
                 <select
                   value={comuna}
-                  onChange={(e) => setComuna(e.target.value)}
+                  onChange={(e) => {
+                    direccionEditada.current = true
+                    setComuna(e.target.value)
+                  }}
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
                 >
                   {comunasDisponibles.map(c => (
@@ -310,7 +401,10 @@ export default function CheckoutStoreView() {
                 <input
                   type="text"
                   value={direccion}
-                  onChange={(e) => setDireccion(e.target.value)}
+                  onChange={(e) => {
+                    direccionEditada.current = true
+                    setDireccion(e.target.value)
+                  }}
                   placeholder="Ej. Av. Libertador Bernardo O'Higgins 1234"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
                   required
@@ -325,6 +419,7 @@ export default function CheckoutStoreView() {
                   type="text"
                   value={depto}
                   onChange={(e) => setDepto(e.target.value)}
+                  placeholder="Ej. Depto 402"
                   className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:bg-white focus:border-indigo-600 focus:outline-hidden"
                 />
               </div>

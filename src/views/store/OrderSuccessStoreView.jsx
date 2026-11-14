@@ -14,18 +14,21 @@ import {
   Layers,
   ExternalLink
 } from 'lucide-react'
-import { fetchOrdenById } from '../../services/api'
+import { esOrdenDeInvitado, fetchOrdenById } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
 
 export default function OrderSuccessStoreView() {
   const { id } = useParams()
-  const { currentUser, openAuthModal } = useAuth()
+  const { currentUser, isAdmin, openAuthModal } = useAuth()
   const [orden, setOrden] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // GET /api/ordenes/:id: solo el dueño o un admin (404 para cualquier otro).
+  // Una orden comprada como invitado en este navegador se ve con su token.
+  const deInvitado = esOrdenDeInvitado(id)
+
+  // GET /api/ordenes/:id: el dueño, un admin o el invitado con su token (404 para cualquier otro).
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser && !deInvitado) {
       setLoading(false)
       return
     }
@@ -34,7 +37,7 @@ export default function OrderSuccessStoreView() {
       .then(setOrden)
       .catch(() => setOrden(null))
       .finally(() => setLoading(false))
-  }, [id, currentUser?.id])
+  }, [id, currentUser?.id, deInvitado])
 
   const formatCLP = (val) => {
     return new Intl.NumberFormat('es-CL', {
@@ -56,7 +59,7 @@ export default function OrderSuccessStoreView() {
     )
   }
 
-  if (!currentUser) {
+  if (!currentUser && !deInvitado) {
     return (
       <div className="max-w-xl mx-auto py-16 text-center space-y-4">
         <h2 className="text-xl font-bold text-slate-900">Inicia sesión para ver tu orden</h2>
@@ -104,6 +107,13 @@ export default function OrderSuccessStoreView() {
         </div>
       </div>
 
+      {!currentUser && deInvitado && (
+        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-900 text-xs print:hidden">
+          Compraste como invitado: esta orden queda guardada solo en este navegador. Para ver tus pedidos desde
+          cualquier dispositivo, crea una cuenta con el mismo correo en tu próxima compra.
+        </div>
+      )}
+
       {/* Comprobante Oficial Imprimible */}
       <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-10 shadow-xs space-y-8 print:border-none print:shadow-none">
         
@@ -137,7 +147,7 @@ export default function OrderSuccessStoreView() {
               Cliente & Facturación
             </span>
             <p className="font-bold text-slate-800">{orden.despacho?.nombre} {orden.despacho?.apellido}</p>
-            <p className="text-slate-500">Email: {currentUser.email}</p>
+            <p className="text-slate-500">Email: {orden.cliente_email || currentUser?.email}</p>
             <p className="text-slate-500">Teléfono: {orden.despacho?.telefono}</p>
           </div>
 
@@ -230,13 +240,15 @@ export default function OrderSuccessStoreView() {
             </Link>
           </div>
 
-          <Link
-            to="/admin"
-            className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-          >
-            <span>Verificar impacto en Bodega ERP</span>
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+            >
+              <span>Verificar impacto en Bodega ERP</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </Link>
+          )}
         </div>
 
       </div>
