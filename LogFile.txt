@@ -759,6 +759,6 @@ RESUMEN DE LO GENERADO:
 - Tests: backend 295 OK (14 nuevos); frontend 61 OK (25 nuevos).
 - Build: npm run build OK; /api/vitals recibió 600 mediciones
   sintéticas (204) y los 6 paneles nuevos devolvieron datos.
-COMMIT: pendiente
+COMMIT: cf28e76 feat(ga4): eventos de e-commerce, Web Vitals y respaldo en /api/vitals
 DEPLOY: no
 ==================================================================
