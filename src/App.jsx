@@ -3,7 +3,7 @@ import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { CartProvider } from './context/CartContext'
 import { AuthProvider } from './context/AuthContext'
-import { trackPageView } from './services/analytics'
+import { esRutaInterna, trackPageView } from './services/analytics'
 
 // Componentes de la Tienda
 import StoreNavbar from './components/store/StoreNavbar'
@@ -29,6 +29,8 @@ function AnalyticsTracker() {
   const location = useLocation()
 
   useEffect(() => {
+    // El panel de administración es tráfico interno: sin page_view.
+    if (esRutaInterna(location.pathname)) return
     trackPageView(location.pathname + location.search, document.title)
   }, [location])
 

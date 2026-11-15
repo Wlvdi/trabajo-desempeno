@@ -46,6 +46,19 @@ const env = () => import.meta.env ?? {}
 const EVENTOS_DE_VISTA = new Set(['page_view', 'view_item_list', 'view_item', 'view_cart', 'search', 'begin_checkout'])
 const VENTANA_DUPLICADO_MS = 1000
 
+/**
+ * Rutas de tráfico interno (panel de administración). No envían eventos a
+ * GA4 ni Web Vitals: ensuciarían los informes de la tienda.
+ * @param {string} ruta pathname (sin query)
+ * @returns {boolean}
+ */
+export function esRutaInterna(ruta) {
+  return typeof ruta === 'string' && /^\/admin(\/|$)/.test(ruta)
+}
+
+/** pathname actual del navegador ('/' fuera del navegador). */
+const rutaActual = () => (typeof window !== 'undefined' && window.location?.pathname) || '/'
+
 /** Muestra el evento en la consola solo en desarrollo. */
 function registrarEnConsola(nombre, parametros) {
   if (env().DEV) console.debug(`[GA4] ${nombre}`, parametros)
@@ -57,6 +70,8 @@ function registrarEnConsola(nombre, parametros) {
  * @param {Record<string, unknown>} [parametros]
  */
 export function emitir(nombre, parametros = {}) {
+  // Tráfico interno: el panel de administración no envía nada a GA4.
+  if (esRutaInterna(rutaActual())) return
   // La analítica nunca debe romper la tienda: cualquier error se registra y se ignora.
   try {
     enviarEvento(nombre, parametros)
@@ -181,6 +196,8 @@ export function paginaActual(ruta = typeof window !== 'undefined' ? window.locat
  * @param {{ name: string, value: number, rating: string, id: string }} metrica
  */
 export function reportarVital({ name, value, rating, id }) {
+  // Tampoco el respaldo a /api/vitals: el panel no forma parte de la tienda medida.
+  if (esRutaInterna(rutaActual())) return
   emitir('web_vitals', {
     metric_name: name, // LCP, INP, CLS, FCP, TTFB
     metric_value: name === 'CLS' ? Math.round(value * 1000) : Math.round(value), // CLS escalado ×1000; el resto en ms
@@ -224,6 +241,7 @@ export function initWebVitals() {
 
 export function trackPageView(path, title) {
   if (typeof window === 'undefined') return
+  if (esRutaInterna(String(path).split('?')[0])) return
   emitir('page_view', {
     page_path: path,
     page_title: title || document.title,

@@ -5,10 +5,11 @@
 // Supabase estaba configurado). La API valida el rol de nuevo en cada
 // endpoint de administración; esta verificación solo evita mostrar el panel.
 //
-// Estado: los endpoints de administración llegan en el commit 9. Mientras
-// tanto, con PANEL_API_DISPONIBLE = false las pestañas de gestión muestran el
-// aviso "Panel en migración" (las funciones de admin de api.js lanzan un
-// ErrorApi 501). La pestaña de configuración muestra el estado de la API.
+// Datos: endpoints /api/admin (ver backend/src/rutas/admin.js). La pestaña
+// de configuración muestra el estado de la API.
+//
+// Analítica: las rutas /admin no envían eventos a GA4 (tráfico interno,
+// ver esRutaInterna en services/analytics.js).
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navbar from '../components/Navbar'
@@ -22,12 +23,9 @@ import AuditoriaView from './AuditoriaView'
 import ConfigView from './ConfigView'
 import { useAuth } from '../context/AuthContext'
 import { testConnection, fetchCategorias, createProducto, updateProducto } from '../services/api'
-import { AlertCircle, ArrowLeft, Construction, Lock } from 'lucide-react'
+import { AlertCircle, Lock } from 'lucide-react'
 
-/** Cambiar a true cuando existan los endpoints de administración (commit 9). */
-const PANEL_API_DISPONIBLE = false
-
-/** Pantalla centrada para los casos sin acceso o en migración. */
+/** Pantalla centrada para los casos sin acceso. */
 function Aviso({ icono, titulo, children }) {
   return (
     <div className="max-w-xl mx-auto my-16 bg-white rounded-3xl border border-slate-200 p-10 text-center space-y-4 shadow-xs">
@@ -40,7 +38,7 @@ function Aviso({ icono, titulo, children }) {
 
 export default function AdminApp() {
   const { currentUser, isAdmin, loading, openAuthModal } = useAuth()
-  const [activeTab, setActiveTab] = useState(PANEL_API_DISPONIBLE ? 'dashboard' : 'config')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [isConnected, setIsConnected] = useState(false)
   const [categorias, setCategorias] = useState([])
   const [inventarioDefaultEstado, setInventarioDefaultEstado] = useState('todos')
@@ -50,11 +48,21 @@ export default function AdminApp() {
   const [productoToEdit, setProductoToEdit] = useState(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  /** Categorías para el modal de producto (incluye las que aún no tienen productos). */
+  const cargarCategorias = async () => {
+    try {
+      setCategorias(await fetchCategorias())
+    } catch (err) {
+      console.warn('No se pudieron cargar las categorías:', err.message)
+    }
+  }
+
   /** Verifica que la API responda (GET /api/salud) y carga las categorías. */
   const verifyConnection = async () => {
     try {
-      setIsConnected(await testConnection())
-      setCategorias(await fetchCategorias())
+      const conectada = await testConnection()
+      setIsConnected(conectada)
+      if (conectada) await cargarCategorias()
     } catch (err) {
       console.warn('No se pudo validar la conexión con la API:', err.message)
       setIsConnected(false)
@@ -132,20 +140,6 @@ export default function AdminApp() {
   }
 
   // --- Panel -----------------------------------------------------------------
-  const avisoMigracion = (
-    <Aviso icono={<Construction className="w-7 h-7" />} titulo="Panel en migración">
-      <p>
-        El panel de administración se está migrando de Supabase a la API propia de Subligol. Inventario, compras,
-        ventas, auditoría y el dashboard estarán disponibles cuando se publiquen sus endpoints.
-      </p>
-      <p>Mientras tanto, la tienda funciona completa y la pestaña de configuración muestra el estado de la API.</p>
-      <Link to="/" className="inline-flex items-center gap-1 px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl font-bold">
-        <ArrowLeft className="w-3.5 h-3.5" /> Volver a la tienda
-      </Link>
-    </Aviso>
-  )
-  const mostrarGestion = (tab) => PANEL_API_DISPONIBLE && activeTab === tab
-
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 font-sans selection:bg-indigo-500 selection:text-white">
 
@@ -169,9 +163,7 @@ export default function AdminApp() {
 
       {/* Contenido Principal ERP */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
-        {!PANEL_API_DISPONIBLE && activeTab !== 'config' && avisoMigracion}
-
-        {mostrarGestion('dashboard') && (
+        {activeTab === 'dashboard' && (
           <DashboardView
             key={`dash-${refreshKey}`}
             onNavigate={handleNavigate}
@@ -179,30 +171,31 @@ export default function AdminApp() {
           />
         )}
 
-        {mostrarGestion('inventario') && (
+        {activeTab === 'inventario' && (
           <InventarioView
             key={`inv-${refreshKey}`}
             defaultEstado={inventarioDefaultEstado}
             onOpenNuevoProducto={handleOpenNuevoProducto}
             onEditProducto={handleEditProducto}
+            onCategoriaCreada={cargarCategorias}
           />
         )}
 
-        {mostrarGestion('compras') && (
+        {activeTab === 'compras' && (
           <ComprasView
             key={`comp-${refreshKey}`}
             onCompraExitosa={triggerRefresh}
           />
         )}
 
-        {mostrarGestion('ventas') && (
+        {activeTab === 'ventas' && (
           <VentasView
             key={`vent-${refreshKey}`}
             onVentaExitosa={triggerRefresh}
           />
         )}
 
-        {mostrarGestion('auditoria') && (
+        {activeTab === 'auditoria' && (
           <AuditoriaView
             key={`aud-${refreshKey}`}
           />

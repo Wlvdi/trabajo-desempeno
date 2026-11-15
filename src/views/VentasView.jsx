@@ -39,11 +39,11 @@ export default function VentasView({ onVentaExitosa }) {
     { producto_id: '', cantidad: 1, precio_unitario: 0 }
   ])
 
+  // "Web" no aparece: ese canal queda reservado para las compras de la tienda.
   const canalesDisponibles = [
     { id: 'Instagram', label: 'Instagram', icon: InstagramIcon },
     { id: 'WhatsApp', label: 'WhatsApp', icon: MessageCircle },
     { id: 'Presencial', label: 'Presencial / Feria', icon: Store },
-    { id: 'Web', label: 'Web', icon: ShoppingCart },
     { id: 'Otro', label: 'Otro Canal', icon: Plus }
   ]
 
@@ -209,7 +209,7 @@ export default function VentasView({ onVentaExitosa }) {
               <div>
                 <p className="font-bold">Aún no hay productos disponibles para venta</p>
                 <p className="mt-0.5 text-amber-700">
-                  Para poder registrar ventas, primero ingresa mercadería en la pestaña <strong>Compras (+Stock)</strong> o verifica tu conexión a Supabase en <strong>Configuración</strong>.
+                  Para poder registrar ventas, primero ingresa mercadería en la pestaña <strong>Compras (+Stock)</strong> o revisa el estado de la API en <strong>Configuración</strong>.
                 </p>
               </div>
             </div>

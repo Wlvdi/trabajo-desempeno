@@ -12,11 +12,18 @@ import {
   Layers,
   Tag
 } from 'lucide-react'
-import { fetchProductos, toggleActivoProducto } from '../services/api'
+import { fetchProductosPaginados, toggleActivoProducto } from '../services/api'
 import ModalNuevaCategoria from '../components/ModalNuevaCategoria'
 
-export default function InventarioView({ onOpenNuevoProducto, onEditProducto, defaultEstado = 'todos' }) {
+export default function InventarioView({
+  onOpenNuevoProducto,
+  onEditProducto,
+  onCategoriaCreada,
+  defaultEstado = 'todos'
+}) {
   const [productos, setProductos] = useState([])
+  // Total de productos que cumplen los filtros (puede superar a los recibidos).
+  const [totalProductos, setTotalProductos] = useState(0)
   const [loading, setLoading] = useState(true)
   const [busqueda, setBusqueda] = useState('')
   const [temporadaFiltro, setTemporadaFiltro] = useState('Todas')
@@ -40,12 +47,13 @@ export default function InventarioView({ onOpenNuevoProducto, onEditProducto, de
     setLoading(true)
     setError(null)
     try {
-      const data = await fetchProductos({
+      const pagina = await fetchProductosPaginados({
         busqueda,
         temporada: temporadaFiltro,
         estado: estadoFiltro
       })
-      setProductos(data)
+      setProductos(pagina.items)
+      setTotalProductos(pagina.total)
     } catch (err) {
       setError(err.message || 'Error al cargar productos')
     } finally {
@@ -160,6 +168,23 @@ export default function InventarioView({ onOpenNuevoProducto, onEditProducto, de
 
         </div>
       </div>
+
+      {/* Error al cargar (antes se guardaba pero no se mostraba) */}
+      {error && !loading && (
+        <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          No se pudo cargar el inventario: {error}
+        </div>
+      )}
+
+      {/* Aviso si hay más productos de los que el panel recibe de una vez */}
+      {!loading && totalProductos > productos.length && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+          <span>
+            Mostrando {productos.length} de {totalProductos} productos. Usa la búsqueda o los filtros para encontrar el resto.
+          </span>
+        </div>
+      )}
 
       {/* Lista / Tabla de Productos */}
       {loading ? (
@@ -305,7 +330,10 @@ export default function InventarioView({ onOpenNuevoProducto, onEditProducto, de
       <ModalNuevaCategoria
         isOpen={isModalCategoriaOpen}
         onClose={() => setIsModalCategoriaOpen(false)}
-        onCategoriaCreada={() => loadProductos()}
+        onCategoriaCreada={(categoria) => {
+          loadProductos()
+          if (onCategoriaCreada) onCategoriaCreada(categoria)
+        }}
       />
 
     </div>

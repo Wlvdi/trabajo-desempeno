@@ -293,26 +293,111 @@ export async function fetchUltimoDespacho() {
 export const fetchMisOrdenes = ({ pagina = 1, limite = 10 } = {}) => pedir('GET', '/ordenes', { query: { pagina, limite } })
 
 // ---------------------------------------------------------------------------
-// Panel de administración: sus endpoints llegan en el commit 9.
-// Las funciones conservan sus nombres para que el panel compile, pero
-// lanzan un ErrorApi claro mientras tanto.
+// Panel de administración (/api/admin, exige sesión con rol admin).
+// Las funciones conservan sus nombres y entregan los datos con la forma que
+// esperan las vistas del panel. Los totales los calcula el servidor: el
+// campo total que arman las vistas no se envía.
 // ---------------------------------------------------------------------------
 
-export const MENSAJE_ADMIN_EN_MIGRACION =
-  'El panel de administración se está migrando a la API propia; sus funciones estarán disponibles en una próxima versión.'
+/** Máximo de productos que el panel pide de una vez (la API admite hasta 1000). */
+export const LIMITE_PRODUCTOS_PANEL = 1000
 
-function adminEnMigracion() {
-  return Promise.reject(new ErrorApi(501, MENSAJE_ADMIN_EN_MIGRACION, { codigo: 'ADMIN_EN_MIGRACION' }))
+/** Estados del inventario: la vista usa "archivados"; la API, "inactivos". */
+const ESTADOS_API = { archivados: 'inactivos' }
+
+/** Convierte a número un valor de formulario (texto) o devuelve undefined si está vacío. */
+const numeroOpcional = (valor) => (valor === '' || valor === null || valor === undefined ? undefined : Number(valor))
+
+/**
+ * Página de productos del panel: { items, total, pagina, limite, totalPaginas }.
+ * @param {{ busqueda?: string, temporada?: string, estado?: string, pagina?: number, limite?: number }} [filtros]
+ */
+export function fetchProductosPaginados({
+  busqueda = '',
+  temporada = 'Todas',
+  estado = 'todos',
+  pagina = 1,
+  limite = LIMITE_PRODUCTOS_PANEL
+} = {}) {
+  return pedir('GET', '/admin/productos', {
+    query: {
+      busqueda: busqueda.trim() || undefined,
+      temporada: temporada && temporada !== 'Todas' ? temporada : undefined,
+      estado: ESTADOS_API[estado] ?? estado,
+      pagina,
+      limite
+    }
+  })
 }
 
-export const createCategoria = adminEnMigracion
-export const fetchProductos = adminEnMigracion
-export const createProducto = adminEnMigracion
-export const updateProducto = adminEnMigracion
-export const toggleActivoProducto = adminEnMigracion
-export const registrarCompra = adminEnMigracion
-export const registrarVenta = adminEnMigracion
-export const fetchDashboardData = adminEnMigracion
-export const fetchAuditLogs = adminEnMigracion
-export const fetchHistorialCompras = adminEnMigracion
-export const fetchHistorialVentas = adminEnMigracion
+/** Arreglo de productos del panel (activos e inactivos) con costo y stock mínimo. */
+export async function fetchProductos(filtros = {}) {
+  return (await fetchProductosPaginados(filtros)).items
+}
+
+export const createProducto = (producto) => pedir('POST', '/admin/productos', { cuerpo: producto })
+
+/** Edita un producto. El stock no se edita (cambia con compras y ventas). */
+export function updateProducto(id, producto) {
+  // eslint-disable-next-line no-unused-vars
+  const { stock_actual, ...campos } = producto
+  return pedir('PATCH', `/admin/productos/${encodeURIComponent(id)}`, { cuerpo: campos })
+}
+
+export const toggleActivoProducto = (id, activo) =>
+  pedir('PATCH', `/admin/productos/${encodeURIComponent(id)}/activo`, { cuerpo: { activo: Boolean(activo) } })
+
+export const createCategoria = ({ nombre, descripcion }) =>
+  pedir('POST', '/admin/categorias', { cuerpo: { nombre, descripcion: descripcion || null } })
+
+/**
+ * Registra una compra a proveedor. Los items con es_nuevo crean el producto
+ * (queda inactivo hasta ponerle precio y activarlo desde Inventario).
+ */
+export function registrarCompra({ proveedor, notas, items }) {
+  return pedir('POST', '/admin/compras', {
+    cuerpo: {
+      proveedor: proveedor || null,
+      notas: notas || null,
+      items: items.map((it) => {
+        const base = { cantidad: Number(it.cantidad), costo_unitario: Number(it.costo_unitario) }
+        if (!it.es_nuevo) return { ...base, producto_id: it.producto_id }
+        return {
+          ...base,
+          es_nuevo: true,
+          nombre: it.nombre,
+          sku: it.sku || null,
+          categoria_id: it.categoria_id || null,
+          temporada: it.temporada || 'General',
+          stock_minimo: numeroOpcional(it.stock_minimo),
+          precio_venta: numeroOpcional(it.precio_venta)
+        }
+      })
+    }
+  })
+}
+
+/** Registra una venta manual (Instagram, WhatsApp, Presencial u Otro). */
+export function registrarVenta({ canal_venta, cliente_nombre, notas, items }) {
+  return pedir('POST', '/admin/ventas', {
+    cuerpo: {
+      canal_venta,
+      cliente_nombre: cliente_nombre || null,
+      notas: notas || null,
+      items: items.map((it) => ({
+        producto_id: it.producto_id,
+        cantidad: Number(it.cantidad),
+        precio_unitario: numeroOpcional(it.precio_unitario)
+      }))
+    }
+  })
+}
+
+/** { inmovilizado, balance, criticos, canales } */
+export const fetchDashboardData = () => pedir('GET', '/admin/dashboard')
+
+export const fetchAuditLogs = (limite = 100) => pedir('GET', '/admin/auditoria', { query: { limite } })
+
+export const fetchHistorialCompras = (limite = 15) => pedir('GET', '/admin/compras', { query: { limite } })
+
+export const fetchHistorialVentas = (limite = 15) => pedir('GET', '/admin/ventas', { query: { limite } })

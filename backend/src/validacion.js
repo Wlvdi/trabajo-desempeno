@@ -253,3 +253,69 @@ export function campoEntero(nombre, valor, { min, max, porDefecto }) {
   }
   return /** @type {number} */ (valor)
 }
+
+/**
+ * Campo de texto opcional del cuerpo: undefined, null o "" (tras recortar)
+ * devuelven null; si viene, debe ser texto con el largo máximo indicado.
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @param {number} largoMaximo
+ * @returns {string | null}
+ */
+export function campoTextoOpcional(nombre, valor, largoMaximo) {
+  if (valor === undefined || valor === null) return null
+  if (typeof valor !== 'string') throw new ErrorValidacion(`El campo "${nombre}" debe ser texto`)
+  const texto = valor.trim()
+  if (texto === '') return null
+  if (texto.length > largoMaximo) {
+    throw new ErrorValidacion(`El campo "${nombre}" admite como máximo ${largoMaximo} caracteres`)
+  }
+  return texto
+}
+
+/**
+ * Campo numérico del cuerpo (número JSON) entre 0 y `max`, con a lo más 2
+ * decimales (columnas numeric(12, 2)).
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @param {{ max: number, porDefecto?: number }} opciones
+ *   porDefecto: si se indica, el campo es opcional
+ * @returns {number}
+ */
+export function campoNumero(nombre, valor, { max, porDefecto }) {
+  if (valor === undefined && porDefecto !== undefined) return porDefecto
+  if (typeof valor !== 'number' || !Number.isFinite(valor) || valor < 0 || valor > max) {
+    throw new ErrorValidacion(`El campo "${nombre}" debe ser un número entre 0 y ${max}`)
+  }
+  if (Math.abs(Math.round(valor * 100) - valor * 100) > 1e-6) {
+    throw new ErrorValidacion(`El campo "${nombre}" admite como máximo 2 decimales`)
+  }
+  return valor
+}
+
+/**
+ * Campo booleano del cuerpo (true o false JSON).
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @param {{ porDefecto?: boolean }} [opciones] porDefecto: si se indica, el campo es opcional
+ * @returns {boolean}
+ */
+export function campoBooleano(nombre, valor, { porDefecto } = {}) {
+  if (valor === undefined && porDefecto !== undefined) return porDefecto
+  if (typeof valor !== 'boolean') throw new ErrorValidacion(`El campo "${nombre}" debe ser true o false`)
+  return valor
+}
+
+/**
+ * Campo lista del cuerpo con largo entre `min` y `max`.
+ * @param {string} nombre
+ * @param {unknown} valor
+ * @param {{ min: number, max: number }} largo
+ * @returns {unknown[]}
+ */
+export function campoLista(nombre, valor, { min, max }) {
+  if (!Array.isArray(valor) || valor.length < min || valor.length > max) {
+    throw new ErrorValidacion(`El campo "${nombre}" debe ser una lista de entre ${min} y ${max} elementos`)
+  }
+  return valor
+}

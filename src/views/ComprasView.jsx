@@ -315,14 +315,20 @@ export default function ComprasView({ onCompraExitosa }) {
         }
       })
 
-      await registrarCompra({
+      // El total lo recalcula el servidor (totalCompra solo se muestra en pantalla).
+      const compra = await registrarCompra({
         proveedor: proveedor.trim(),
         notas: notas.trim(),
-        total: totalCompra,
         items: payloadItems
       })
 
-      setExito('¡Ingreso de mercadería registrado con éxito! El inventario, los nuevos artículos y el historial de auditoría se actualizaron en tiempo real.')
+      const creados = compra?.productos_creados?.filter((p) => !p.activo).length ?? 0
+      setExito(
+        '¡Ingreso de mercadería registrado con éxito! El inventario y el historial de auditoría se actualizaron.' +
+          (creados > 0
+            ? ` ${creados === 1 ? 'El artículo nuevo quedó inactivo' : `Los ${creados} artículos nuevos quedaron inactivos`}: ponle precio y actívalo desde Inventario.`
+            : '')
+      )
       setProveedor('')
       setNotas('')
       
@@ -543,6 +549,13 @@ export default function ComprasView({ onCompraExitosa }) {
                       {/* CASO A: ARTÍCULO NUEVO (Permite escribir el nombre libremente) */}
                       {item.es_nuevo ? (
                         <div className="space-y-3">
+                          <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-medium flex items-start gap-2">
+                            <AlertCircle className="w-4 h-4 flex-shrink-0 mt-px" />
+                            <span>
+                              El artículo nuevo queda <strong>inactivo</strong> (no se ve en la tienda) y con precio de venta $0.
+                              Después de registrar la compra, ponle precio y actívalo desde <strong>Inventario</strong>.
+                            </span>
+                          </div>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             
                             {/* Nombre del nuevo artículo */}

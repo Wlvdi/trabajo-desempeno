@@ -333,3 +333,53 @@ describe('Eventos de e-commerce', () => {
     expect(JSON.stringify(window.dataLayer)).not.toMatch(/@/)
   })
 })
+
+describe('Tráfico interno (/admin)', () => {
+  it('esRutaInterna reconoce /admin y sus subrutas, y nada más', async () => {
+    const { esRutaInterna } = await cargarAnalitica()
+    expect(esRutaInterna('/admin')).toBe(true)
+    expect(esRutaInterna('/admin/')).toBe(true)
+    expect(esRutaInterna('/admin/inventario')).toBe(true)
+    expect(esRutaInterna('/administracion')).toBe(false)
+    expect(esRutaInterna('/catalogo')).toBe(false)
+    expect(esRutaInterna('/')).toBe(false)
+    expect(esRutaInterna(undefined)).toBe(false)
+  })
+
+  it('en /admin no se envía page_view ni ningún otro evento', async () => {
+    simularNavegador({ url: 'http://localhost:5173/admin' })
+    const ga = await cargarAnalitica()
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
+    ga.trackPageView('/admin', 'Panel')
+    ga.trackLogin()
+    ga.trackSearch('taza')
+    expect(eventos()).toEqual([])
+  })
+
+  it('trackPageView descarta una ruta /admin aunque la ubicación sea de la tienda', async () => {
+    simularNavegador({ url: 'http://localhost:5173/catalogo' })
+    const ga = await cargarAnalitica()
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
+    ga.trackPageView('/admin?tab=ventas', 'Panel')
+    expect(evento('page_view')).toBeUndefined()
+  })
+
+  it('en /admin tampoco se envían Web Vitals (ni a GA4 ni a /api/vitals)', async () => {
+    const { balizas } = simularNavegador({ url: 'http://localhost:5173/admin' })
+    const ga = await cargarAnalitica()
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
+    callbacksVitals.LCP({ name: 'LCP', value: 900, rating: 'good', id: 'v1-9' })
+    expect(evento('web_vitals')).toBeUndefined()
+    expect(balizas).toHaveLength(0)
+  })
+
+  it('en la tienda sí se envían page_view y los demás eventos', async () => {
+    simularNavegador({ url: 'http://localhost:5173/catalogo' })
+    const ga = await cargarAnalitica()
+    ga.initGA({ id: 'G-PRUEBA123', debug: false })
+    ga.trackPageView('/catalogo', 'Catálogo')
+    ga.trackLogin()
+    expect(evento('page_view')).toMatchObject({ page_path: '/catalogo' })
+    expect(evento('login')).toEqual({ method: 'email' })
+  })
+})

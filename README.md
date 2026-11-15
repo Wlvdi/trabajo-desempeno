@@ -32,8 +32,9 @@ desempeño bajo carga.
 - Analítica: GA4 (gtag.js) y web-vitals en `src/services/analytics.js`.
 - Pago: **simulado** (medio_pago `mock`, sin llamar a Transbank). La
   integración con el sandbox real de Webpay será un commit posterior.
-- Panel de administración (`/admin`): requiere rol admin y muestra
-  "Panel en migración" hasta que existan sus endpoints.
+- Panel de administración (`/admin`): requiere rol admin y consume
+  `/api/admin` (productos, categorías, compras, ventas manuales, dashboard y
+  auditoría). No envía eventos a GA4 ni Web Vitals (tráfico interno).
 
 ### Requisitos
 - Node.js 22 o superior
@@ -110,6 +111,16 @@ Los reportes quedan en `carga/resultados/AAAA-MM-DD/`.
   `/api/auth/registro`: no se aplica por ahora porque interferiría con las
   pruebas de carga de la Fase 2. Antes de exponer el sitio en producción
   conviene limitar intentos por IP y por correo.
+
+## Pendientes del panel de administración
+- **Auditoría de edición y activación de productos** (migración 005): hoy
+  solo se auditan la creación de productos, las compras y las ventas. Si se
+  agrega, el trigger debe ser `AFTER UPDATE OF` las columnas editables
+  (sku, nombre, descripcion, categoria_id, temporada, costo_unitario,
+  precio_venta, stock_minimo, activo), **sin `stock_actual`**, para no
+  auditar cada venta ni afectar las pruebas de carga.
+- **Paginación del inventario en la interfaz**: el panel pide hasta 1000
+  productos de una vez y muestra "Mostrando X de Y" si hay más.
 
 ---
 

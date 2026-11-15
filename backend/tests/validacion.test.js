@@ -5,6 +5,10 @@ import { describe, it, expect } from 'vitest'
 import {
   ErrorValidacion,
   booleano,
+  campoBooleano,
+  campoLista,
+  campoNumero,
+  campoTextoOpcional,
   entero,
   esUuid,
   numeroNoNegativo,
@@ -94,5 +98,41 @@ describe('validadores', () => {
 describe('escaparLike', () => {
   it('escapa %, _ y \\ para buscarlos de forma literal', () => {
     expect(escaparLike('50%_a\\b')).toBe('50\\%\\_a\\\\b')
+  })
+})
+
+describe('validadores del cuerpo (panel de administración)', () => {
+  it('campoTextoOpcional: vacío o ausente es null; recorta y respeta el largo', () => {
+    expect(campoTextoOpcional('notas', undefined, 10)).toBeNull()
+    expect(campoTextoOpcional('notas', null, 10)).toBeNull()
+    expect(campoTextoOpcional('notas', '   ', 10)).toBeNull()
+    expect(campoTextoOpcional('notas', ' hola ', 10)).toBe('hola')
+    expect(() => campoTextoOpcional('notas', 'x'.repeat(11), 10)).toThrow(/máximo 10/)
+    expect(() => campoTextoOpcional('notas', 5, 10)).toThrow(ErrorValidacion)
+  })
+
+  it('campoNumero: número JSON entre 0 y max con a lo más 2 decimales', () => {
+    expect(campoNumero('precio', 1990, { max: 1e6 })).toBe(1990)
+    expect(campoNumero('precio', 10.5, { max: 1e6 })).toBe(10.5)
+    expect(campoNumero('precio', 0.29, { max: 1e6 })).toBe(0.29)
+    expect(campoNumero('precio', undefined, { max: 1e6, porDefecto: 0 })).toBe(0)
+    expect(() => campoNumero('precio', '1990', { max: 1e6 })).toThrow(/número entre 0/)
+    expect(() => campoNumero('precio', -1, { max: 1e6 })).toThrow(ErrorValidacion)
+    expect(() => campoNumero('precio', 2e6, { max: 1e6 })).toThrow(ErrorValidacion)
+    expect(() => campoNumero('precio', Number.NaN, { max: 1e6 })).toThrow(ErrorValidacion)
+    expect(() => campoNumero('precio', 1.234, { max: 1e6 })).toThrow(/2 decimales/)
+  })
+
+  it('campoBooleano: solo true o false', () => {
+    expect(campoBooleano('activo', false)).toBe(false)
+    expect(campoBooleano('activo', undefined, { porDefecto: true })).toBe(true)
+    expect(() => campoBooleano('activo', 'true')).toThrow(/true o false/)
+  })
+
+  it('campoLista: arreglo dentro del largo permitido', () => {
+    expect(campoLista('items', [1], { min: 1, max: 2 })).toEqual([1])
+    expect(() => campoLista('items', [], { min: 1, max: 2 })).toThrow(/entre 1 y 2/)
+    expect(() => campoLista('items', [1, 2, 3], { min: 1, max: 2 })).toThrow(ErrorValidacion)
+    expect(() => campoLista('items', 'x', { min: 1, max: 2 })).toThrow(ErrorValidacion)
   })
 })

@@ -9,6 +9,17 @@ import {
   fusionarCarrito,
   agregarAlCarrito,
   fetchProductos,
+  fetchProductosPaginados,
+  createProducto,
+  updateProducto,
+  toggleActivoProducto,
+  createCategoria,
+  registrarCompra,
+  registrarVenta,
+  fetchDashboardData,
+  fetchAuditLogs,
+  fetchHistorialCompras,
+  fetchHistorialVentas,
   pedir,
   procesarOrdenWeb,
   urlBase,
@@ -187,14 +198,6 @@ describe('ErrorApi', () => {
     expect(await fetchProductoById('no-existe')).toBeNull()
   })
 
-  it('las funciones del panel de admin rechazan con un ErrorApi 501 claro', async () => {
-    const f = simularFetch()
-    const err = await fetchProductos().catch((e) => e)
-    expect(err).toBeInstanceOf(ErrorApi)
-    expect(err.status).toBe(501)
-    expect(err.message).toMatch(/migrando a la API propia/)
-    expect(f).not.toHaveBeenCalled()
-  })
 })
 
 describe('Cierre de sesión ante 401', () => {
@@ -337,5 +340,125 @@ describe('fetchUltimoDespacho', () => {
     guardarSesion({ token: 'jwt', usuario: USUARIO })
     simularFetch({ cuerpo: { items: [], total: 0 } })
     expect(await fetchUltimoDespacho()).toBeNull()
+  })
+})
+
+describe('Panel de administración', () => {
+  const ID = '11111111-2222-4333-8444-555555555555'
+  const cuerpoDe = (f) => JSON.parse(llamada(f).opciones.body)
+
+  it('fetchProductos devuelve el arreglo de items y envía filtros, límite 1000 y token', async () => {
+    guardarSesion({ token: 'jwt-admin', usuario: { ...USUARIO, rol: 'admin' } })
+    const f = simularFetch({ cuerpo: { items: [{ id: 'p-1' }], total: 1, pagina: 1, limite: 1000, totalPaginas: 1 } })
+    expect(await fetchProductos({ busqueda: ' taza ', temporada: 'Navidad', estado: 'activos' })).toEqual([{ id: 'p-1' }])
+    const url = new URL(llamada(f).url, 'http://x')
+    expect(url.pathname).toBe('/api/admin/productos')
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      busqueda: 'taza', temporada: 'Navidad', estado: 'activos', pagina: '1', limite: '1000'
+    })
+    expect(llamada(f).cabeceras.Authorization).toBe('Bearer jwt-admin')
+  })
+
+  it('"archivados" de la vista se envía como "inactivos" y "Todas" no filtra', async () => {
+    const f = simularFetch({ cuerpo: { items: [], total: 0 } })
+    await fetchProductosPaginados({ estado: 'archivados', temporada: 'Todas' })
+    expect(llamada(f).url).toBe('/api/admin/productos?estado=inactivos&pagina=1&limite=1000')
+  })
+
+  it('fetchProductosPaginados entrega el total para el aviso "Mostrando X de Y"', async () => {
+    simularFetch({ cuerpo: { items: [{ id: 'p-1' }], total: 1200, pagina: 1, limite: 1000, totalPaginas: 2 } })
+    expect(await fetchProductosPaginados()).toMatchObject({ total: 1200, items: [{ id: 'p-1' }] })
+  })
+
+  it('crear, editar (sin stock) y activar productos', async () => {
+    const f = simularFetch({ status: 201, cuerpo: { id: ID } }, { cuerpo: { id: ID } }, { cuerpo: { id: ID } })
+    await createProducto({ nombre: 'Taza', stock_actual: 5 })
+    await updateProducto(ID, { nombre: 'Taza 2', stock_actual: 9, precio_venta: 4990 })
+    await toggleActivoProducto(ID, false)
+
+    expect(llamada(f, 0)).toMatchObject({ url: '/api/admin/productos', opciones: { method: 'POST' } })
+    expect(cuerpoDe(f)).toEqual({ nombre: 'Taza', stock_actual: 5 })
+    expect(llamada(f, 1)).toMatchObject({ url: `/api/admin/productos/${ID}`, opciones: { method: 'PATCH' } })
+    expect(JSON.parse(llamada(f, 1).opciones.body)).toEqual({ nombre: 'Taza 2', precio_venta: 4990 })
+    expect(llamada(f, 2)).toMatchObject({ url: `/api/admin/productos/${ID}/activo`, opciones: { method: 'PATCH' } })
+    expect(JSON.parse(llamada(f, 2).opciones.body)).toEqual({ activo: false })
+  })
+
+  it('createCategoria envía nombre y descripción (vacía como null)', async () => {
+    const f = simularFetch({ status: 201, cuerpo: { id: ID } })
+    await createCategoria({ nombre: 'Llaveros', descripcion: '' })
+    expect(llamada(f).url).toBe('/api/admin/categorias')
+    expect(cuerpoDe(f)).toEqual({ nombre: 'Llaveros', descripcion: null })
+  })
+
+  it('registrarCompra convierte los textos a número, no envía el total y arma los artículos nuevos', async () => {
+    const f = simularFetch({ status: 201, cuerpo: { id: 'c-1', productos_creados: [] } })
+    await registrarCompra({
+      proveedor: 'Proveedor',
+      notas: '',
+      total: 999,
+      items: [
+        { es_nuevo: false, producto_id: ID, cantidad: '10', costo_unitario: '1250.5' },
+        { es_nuevo: true, nombre: 'Botella', sku: '', categoria_id: '', temporada: 'Verano', stock_minimo: '5', cantidad: 2, costo_unitario: 900 }
+      ]
+    })
+    expect(llamada(f).url).toBe('/api/admin/compras')
+    expect(cuerpoDe(f)).toEqual({
+      proveedor: 'Proveedor',
+      notas: null,
+      items: [
+        { producto_id: ID, cantidad: 10, costo_unitario: 1250.5 },
+        { es_nuevo: true, nombre: 'Botella', sku: null, categoria_id: null, temporada: 'Verano', stock_minimo: 5, cantidad: 2, costo_unitario: 900 }
+      ]
+    })
+  })
+
+  it('registrarVenta convierte los textos a número, omite un precio vacío y no envía el total', async () => {
+    const f = simularFetch({ status: 201, cuerpo: { id: 'v-1' } })
+    await registrarVenta({
+      canal_venta: 'WhatsApp',
+      cliente_nombre: 'Ana',
+      notas: '',
+      total: 1,
+      items: [{ producto_id: ID, cantidad: '2', precio_unitario: '3990' }, { producto_id: 'p-2', cantidad: 1, precio_unitario: '' }]
+    })
+    expect(cuerpoDe(f)).toEqual({
+      canal_venta: 'WhatsApp',
+      cliente_nombre: 'Ana',
+      notas: null,
+      items: [{ producto_id: ID, cantidad: 2, precio_unitario: 3990 }, { producto_id: 'p-2', cantidad: 1 }]
+    })
+  })
+
+  it('el 409 de una venta conserva la lista de productos', async () => {
+    const productos = [{ producto_id: ID, nombre: 'Taza', solicitado: 3, disponible: 1 }]
+    simularFetch({ status: 409, cuerpo: { error: 'Stock insuficiente para registrar la venta', productos } })
+    const err = await registrarVenta({ canal_venta: 'Otro', items: [{ producto_id: ID, cantidad: 3 }] }).catch((e) => e)
+    expect(err).toBeInstanceOf(ErrorApi)
+    expect(err.detalle.productos).toEqual(productos)
+  })
+
+  it('dashboard, auditoría e historiales usan sus rutas y límites', async () => {
+    const f = simularFetch({ cuerpo: {} }, { cuerpo: [] }, { cuerpo: [] }, { cuerpo: [] }, { cuerpo: [] })
+    await fetchDashboardData()
+    await fetchAuditLogs()
+    await fetchAuditLogs(500)
+    await fetchHistorialCompras(15)
+    await fetchHistorialVentas()
+    expect(f.mock.calls.map(([url]) => url)).toEqual([
+      '/api/admin/dashboard',
+      '/api/admin/auditoria?limite=100',
+      '/api/admin/auditoria?limite=500',
+      '/api/admin/compras?limite=15',
+      '/api/admin/ventas?limite=15'
+    ])
+  })
+
+  it('un 403 (cuenta sin rol admin) no cierra la sesión', async () => {
+    guardarSesion({ token: 'jwt-cliente', usuario: USUARIO })
+    simularFetch({ status: 403, cuerpo: { error: 'No tienes permisos para esta acción' } })
+    const err = await fetchDashboardData().catch((e) => e)
+    expect(err.status).toBe(403)
+    expect(obtenerToken()).toBe('jwt-cliente')
   })
 })
