@@ -4,7 +4,7 @@ Una fila por ejecución (guía, tabla 6.2). La ventana de tiempo y el commit los
 imprime `carga/ejecutar.sh` y quedan en `resultados/<ESCENARIO>/*.meta.json`.
 
 **Servidor:** VM Azure Chile Central · 2 vCPU · 7,7 GB RAM · Ubuntu 24.04 · `PG_POOL_MAX=10`
-**Generador:** PC `cachyos-KDEPlasma` · 6 CPU · 23 GiB RAM · [COMPLETAR: conexión cable / wifi] · k6 v2.4.0 · Docker local detenido durante las pruebas
+**Generador:** PC `cachyos-KDEPlasma` · 6 CPU · 23 GiB RAM · conexión por cable (Ethernet) · k6 v2.4.0 · Docker local detenido durante las pruebas
 
 | Run | Escenario | Rep. | Inicio – fin (Chile) | Commit | Umbrales | Observaciones |
 |---|---|---|---|---|---|---|
