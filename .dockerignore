@@ -8,7 +8,6 @@ dist
 .git
 backend
 carga
-load_tests
 infra/grafana
 infra/prometheus
 *.pdf

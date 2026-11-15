@@ -1011,3 +1011,52 @@ COMMIT: 58d7c5d chore(deploy): Caddy con HTTPS y compose de producción para la 
         2625189 chore(deploy): Caddy sin correo de ACME obligatorio
 DEPLOY: sí (https://subligol-utem.chilecentral.cloudapp.azure.com, 14-11-26 23:10)
 ==================================================================
+
+==================================================================
+ID: 0014
+FECHA: 15-11-26 HORA: 00:13 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Vamos con la Fase 1.2 (k6). Confirmo el diseño: el comprador inicia
+sesión y además puede comprar como invitado; incluir el navegador real
+en paralelo y el envío de las métricas de k6 a Prometheus. No ejecutes
+pruebas contra la VM todavía: antes explícame cómo hacerlas y cómo
+documentarlas, para completar lo que pide el informe sobre las cargas
+(diseñar y construir generadores de carga que simulen usuarios
+concurrentes, definir e interpretar indicadores de desempeño y analizar
+el comportamiento).
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: carga/k6/escenarios.js con 4 perfiles (navegante 50 %,
+  buscador 25 %, abandono 15 %, comprador 10 % con login o invitado vía
+  PROPORCION_INVITADO), think time, etiqueta pagina por petición,
+  escenarios humo, piloto, baja, normal y estres (ramping-arrival-rate
+  con mesetas 20/50/100/150 sesiones/s), calentamiento de 1 min
+  excluido, umbrales SLO y métricas propias (duracion_checkout,
+  compras_ok/sin_stock/carrito_vacio). carga/k6/navegador-real.js
+  (k6/browser): Web Vitals e INP bajo carga con ?escenario=.
+  carga/ejecutar.sh aplica el protocolo 6.3.1 (meta con commit y horas,
+  HTML, resumen JSON, CSV crudo, CPU del generador; opcional resembrar,
+  navegador real y remote write a Prometheus por túnel SSH).
+  carga/tabla-resumen.mjs genera tablas para el informe. Fila
+  "Generador (k6)" en Grafana (36 paneles). Guía carga/README.md (cómo
+  ejecutar, dónde ver y cómo documentar) y carga/bitacora.md (tablas
+  6.2, 6.3 y 6.4). Se elimina load_tests/.
+- Archivos: carga/{README.md,bitacora.md,ejecutar.sh,tabla-resumen.mjs},
+  carga/k6/{escenarios.js,navegador-real.js},
+  infra/grafana/dashboards/subligol.json, README.md, AGENTS.md,
+  .gitignore, .dockerignore; load_tests/ eliminado.
+- Instalaciones: ninguna (k6 v2.4.0 y Chrome ya instalados).
+- Tests: 4 perfiles por separado y ensayo completo del protocolo
+  (piloto 4 min con navegador real y Prometheus) contra Docker local:
+  0 % errores, umbrales cumplidos, Web Vitals en Prometheus, paneles de
+  k6 con datos. Corregidos: PERFIL inválido en bucle, selector
+  :has-text no soportado, percentiles por página en el resumen,
+  etiqueta escenario en k6 v2, unidad del panel de checkout y vmstat
+  en formato estándar. No se ejecutó carga contra la VM.
+COMMIT: pendiente
+DEPLOY: pendiente
+==================================================================

@@ -64,4 +64,4 @@ de desempeño.
 - Tests (backend + frontend; requiere la BD en Docker): npm test
 - Solo frontend: npm run test:frontend
 - Build del frontend: npm run build
-- Carga (pendiente, Fase 1.2): k6 run -e ESCENARIO=normal -e BASE_URL=http://localhost:3000 carga/k6/escenarios.js
+- Carga: carga/ejecutar.sh <humo|piloto|baja|normal|estres> (guía: carga/README.md)

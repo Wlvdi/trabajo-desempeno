@@ -202,15 +202,25 @@ pruebas de carga ni el día de la revisión.
 
 ## Monitoreo
 - Grafana (http://127.0.0.1:3001) abre el dashboard **"Subligol – Desempeño"**
-  (30 paneles): tráfico y latencia por ruta, recursos del equipo y de los
-  contenedores, event loop y pool de PostgreSQL, base de datos y negocio, y
-  Web Vitals (p75 por escenario).
+  (36 paneles): tráfico y latencia por ruta, recursos del equipo y de los
+  contenedores, event loop y pool de PostgreSQL, base de datos y negocio,
+  Web Vitals (p75 por escenario) y el generador de carga (k6).
 - Consultas más costosas: `select queryid, query from pg_stat_statements`.
 
-## Pruebas de carga
-_Pendiente (Fase 1.2)._ El script `carga/k6/escenarios.js` (escenarios baja,
-normal y estrés) reemplazará a los scripts preliminares de `load_tests/`,
-que apuntan a rutas de la SPA y no miden el servidor.
+## Pruebas de carga (k6)
+Generador en `carga/k6/escenarios.js`: 4 perfiles de usuario (navegante,
+buscador, abandono y comprador), escenarios `humo`, `piloto`, `baja`, `normal`
+y `estres` (modelo abierto con mesetas), umbrales (SLO) y navegadores reales en
+paralelo (`carga/k6/navegador-real.js`) para Web Vitals bajo carga.
+
+```bash
+carga/ejecutar.sh humo                                              # verificación
+RESEMBRAR=1 NAVEGADOR=1 PROMETHEUS=1 REPETICION=R1 carga/ejecutar.sh normal
+node carga/tabla-resumen.mjs carga/resultados/AAAA-MM-DD/normal_*.resumen.json
+```
+Los resultados quedan en `carga/resultados/AAAA-MM-DD/`. **Guía completa de
+ejecución, dónde ver los resultados y cómo documentarlos en el informe:
+[`carga/README.md`](carga/README.md).** Bitácora: `carga/bitacora.md`.
 
 ---
 
@@ -230,7 +240,8 @@ que apuntan a rutas de la SPA y no miden el servidor.
 - **`/metrics` en un puerto interno** que no se publica.
 
 ## Pendientes
-- Pruebas de carga con k6 (Fase 1.2) y análisis de desempeño (Fase 2).
+- Ejecutar las pruebas de carga contra la VM (3 repeticiones por escenario) y
+  el análisis de desempeño (Fase 2).
 - **Seguridad:** límite de intentos (rate limiting) en login y registro; no
   se aplica todavía porque interferiría con las pruebas de carga.
 - **Panel:** auditoría de edición y activación de productos (migración 005,

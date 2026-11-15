@@ -30,3 +30,10 @@ dist-ssr
 
 # Archivos temporales del editor Kate
 *.kate-swp
+
+# Pruebas de carga: los datos crudos son pesados (se guardan fuera del repo);
+# los reportes HTML, los resúmenes JSON y los metadatos sí se versionan.
+carga/resultados/**/*.csv
+carga/resultados/**/*.csv.gz
+carga/resultados/**/*.ndjson
+carga/resultados/**/*.navegador.log
