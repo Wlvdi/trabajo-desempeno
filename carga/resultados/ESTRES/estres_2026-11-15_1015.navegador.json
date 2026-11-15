@@ -1,0 +1,211 @@
+{
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 930001.225794
+  },
+  "metrics": {
+    "browser_web_vital_inp": {
+      "values": {
+        "avg": 2,
+        "med": 0,
+        "p(75)": 2,
+        "p(90)": 8,
+        "p(95)": 8,
+        "max": 8,
+        "count": 8
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "iteration_duration": {
+      "contains": "time",
+      "values": {
+        "p(90)": 19640.539671,
+        "p(95)": 20225.358664,
+        "max": 137071.711326,
+        "count": 47,
+        "avg": 17383.837662978724,
+        "med": 13921.189346,
+        "p(75)": 15767.18562
+      },
+      "type": "trend"
+    },
+    "browser_data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 29016964,
+        "rate": 31200.99543441613
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "rate": 0.050537567797153356,
+        "count": 47
+      }
+    },
+    "browser_http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 2720
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "passes": 92,
+        "fails": 0,
+        "rate": 1
+      }
+    },
+    "data_received": {
+      "contains": "data",
+      "values": {
+        "count": 0,
+        "rate": 0
+      },
+      "type": "counter"
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "browser_web_vital_fcp": {
+      "contains": "time",
+      "values": {
+        "p(75)": 152,
+        "p(90)": 176,
+        "p(95)": 187.19999999999993,
+        "max": 136960,
+        "count": 185,
+        "avg": 923.9351351351352,
+        "med": 68
+      },
+      "type": "trend"
+    },
+    "browser_web_vital_ttfb": {
+      "values": {
+        "p(75)": 22.59999999962747,
+        "p(90)": 34.079999999981375,
+        "p(95)": 38.01999999973922,
+        "max": 5284.200000000186,
+        "count": 185,
+        "avg": 107.86432432434144,
+        "med": 5.6000000005587935
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "vus_max": {
+      "contains": "default",
+      "values": {
+        "min": 1,
+        "max": 1,
+        "value": 1
+      },
+      "type": "gauge"
+    },
+    "browser_web_vital_lcp": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 1144.6702702702703,
+        "med": 152,
+        "p(75)": 188,
+        "p(90)": 447.1999999999995,
+        "p(95)": 2292.7999999999993,
+        "max": 136960,
+        "count": 185
+      }
+    },
+    "browser_http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 65.25125094999984,
+        "max": 5284.445,
+        "count": 2720,
+        "avg": 74.62563272904448,
+        "med": 9.5735,
+        "p(75)": 20.48475075,
+        "p(90)": 38.086200899999994
+      }
+    },
+    "browser_web_vital_cls": {
+      "type": "trend",
+      "contains": "default",
+      "values": {
+        "avg": 0.0030706403345675103,
+        "med": 0.00008558829625447592,
+        "p(75)": 0.00391015625,
+        "p(90)": 0.008676622178819444,
+        "p(95)": 0.008676622178819444,
+        "max": 0.00869723849826389,
+        "count": 185
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "browser_data_sent": {
+      "contains": "data",
+      "values": {
+        "rate": 1929.6963812793053,
+        "count": 1794620
+      },
+      "type": "counter"
+    }
+  },
+  "root_group": {
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+      {
+        "path": "::home cargó",
+        "id": "8c82ea67d4308aba0d298a5f01fe0573",
+        "passes": 46,
+        "fails": 0,
+        "name": "home cargó"
+      },
+      {
+        "path": "::carrito cargó",
+        "id": "3519a183d4f752ea835b18e3f5219f3f",
+        "passes": 46,
+        "fails": 0,
+        "name": "carrito cargó"
+      }
+    ]
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "med",
+      "p(75)",
+      "p(90)",
+      "p(95)",
+      "max",
+      "count"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  }
+}

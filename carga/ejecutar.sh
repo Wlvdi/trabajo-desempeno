@@ -93,6 +93,10 @@ cat > "$PREFIJO.meta.json" <<EOF
   "commit": "$(git rev-parse --short HEAD)",
   "inicio": "$INICIO",
   "proporcion_invitado": "${PROPORCION_INVITADO:-0}",
+  "factor_pausas": "${FACTOR_PAUSAS:-1}",
+  "estres_escalones": "${ESTRES_ESCALONES:-20,50,100,150}",
+  "estres_meseta": "${ESTRES_MESETA:-2m30s}",
+  "max_vus": "${MAX_VUS:-1000}",
   "navegador_real": "${NAVEGADOR:-0}",
   "prometheus": "${PROMETHEUS:-0}",
   "generador": {
@@ -145,5 +149,12 @@ echo
 echo "== Listo. Resultados en $DIR/:"
 ls -1 "$PREFIJO".* | sed 's#^#   #'
 echo "== Ventana para Grafana: $INICIO → $FIN"
+# 7. Métricas del servidor (Prometheus de la VM) a CSV: no dependen de capturas ni de la VM.
+if [[ "$ES_LOCAL" == "0" ]]; then
+  echo "== Exportando métricas del servidor (esperando el último scrape)..."
+  sleep 20
+  carga/exportar-servidor.sh "$PREFIJO.meta.json" || echo "   (no se pudo exportar: ejecútalo después con carga/exportar-servidor.sh $PREFIJO.meta.json)"
+fi
+
 [[ $CODIGO -eq 99 ]] && echo "== Algún umbral (SLO) NO se cumplió: revisa el resumen (en estrés es lo esperado)."
 exit "$CODIGO"

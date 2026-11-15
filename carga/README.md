@@ -10,6 +10,7 @@ Guía de la **Fase 1.2** (generadores de carga) y base de la **Fase 2**
 | `k6/datos/usuarios.csv` | 200 cuentas de prueba (`test001…test200@ejemplo.cl`), una por usuario virtual |
 | `ejecutar.sh` | Ejecuta un escenario con el protocolo de la guía (6.3.1) y guarda los resultados |
 | `tabla-resumen.mjs` | Convierte los resultados en tablas Markdown para el informe |
+| `exportar-servidor.sh` | Exporta de Prometheus (lo que muestra Grafana) las métricas del **servidor** de cada prueba a CSV: no hacen falta capturas y no dependen de la VM |
 | `tabla-repeticiones.mjs` | Junta las repeticiones (R1, R2, R3) de un escenario: promedio [mín–máx] de cada percentil por página |
 | `bitacora.md` | Bitácora de ejecuciones (tabla 6.2 de la guía) |
 | `resultados/<ESCENARIO>/` | Resultados de cada ejecución, una carpeta por escenario (`HUMO`, `PILOTO`, `BAJA`, `NORMAL`, `ESTRES`); el nombre lleva fecha y hora |
@@ -120,6 +121,7 @@ RESEMBRAR=1 NAVEGADOR=1 PROMETHEUS=1 REPETICION=R1 carga/ejecutar.sh normal
 | `PROPORCION_INVITADO=0.3` | 30 % de los compradores sin cuenta (por defecto 0: todos inician sesión) |
 | `ESTRES_ESCALONES=10,30,60,100` | Ajustar los escalones del estrés tras el piloto |
 | `MAX_VUS=1500` | Más VUs si aparecen "iteraciones descartadas" en el estrés |
+| `FACTOR_PAUSAS=0.25` | Multiplica las pausas (think time). En el estrés reduce los VUs (y las conexiones simultáneas) a una cuarta parte para la misma tasa de sesiones, sin cambiar las peticiones por sesión: N = X·(R+Z) |
 | `BASE_URL=http://localhost:3000` | Probar contra Docker local en vez de la VM |
 
 ### Durante
@@ -131,7 +133,11 @@ RESEMBRAR=1 NAVEGADOR=1 PROMETHEUS=1 REPETICION=R1 carga/ejecutar.sh normal
 - Esperar a que la CPU y las conexiones de la VM vuelvan a la línea base
   (**enfriamiento**, 2–3 min en Grafana) antes de la siguiente prueba.
 - Anotar la ejecución en `bitacora.md` (el script imprime la ventana de tiempo).
-- Exportar capturas de Grafana con el **rango exacto** de la prueba.
+- Las métricas del servidor quedan en `…servidor.csv`, `…rutas.csv` y
+  `…consultas.csv` (los exporta `ejecutar.sh` al terminar). Prometheus solo
+  guarda 15 días: si una prueba quedó sin exportar, ejecutar
+  `carga/exportar-servidor.sh carga/resultados` antes de apagar o borrar la VM.
+- (Opcional) capturas de Grafana con el **rango exacto** de la prueba para el video.
 - `git add carga/resultados carga/bitacora.md && git commit` (los CSV crudos
   `*.csv.gz` no se suben: guardarlos comprimidos fuera del repositorio).
 
@@ -147,6 +153,9 @@ RESEMBRAR=1 NAVEGADOR=1 PROMETHEUS=1 REPETICION=R1 carga/ejecutar.sh normal
 | `…_HHMM.generador.log` | CPU (`us`, `sy`, `id`) y memoria del PC generador cada 5 s | Texto (`vmstat`) |
 | `…_HHMM.navegador.json` | Web Vitals (LCP, FCP, TTFB, CLS, INP) de los navegadores reales | `browser_web_vital_*` (p75) |
 | `…_HHMM.csv.gz` | Cada petición con sus etiquetas (para análisis estadístico y gráficos propios) | No se versiona |
+| `…_HHMM.servidor.csv` | **Servidor cada 15 s**: req/s, p50/p95/p99, errores 4xx/5xx, peticiones en curso, CPU de la VM y de `api`/`db`/`web`/monitoreo, memoria, disco, red, event loop, pool de PostgreSQL, argon2, transacciones, compras, logins y VUs de k6 | Lo genera `ejecutar.sh` al terminar (o `carga/exportar-servidor.sh <meta.json>`) |
+| `…_HHMM.rutas.csv` | req/s y p95 **por ruta** del servidor cada 15 s | Idem |
+| `…_HHMM.consultas.csv` | Las 15 **consultas SQL más costosas** de la prueba (tiempo total, llamadas, ms por llamada y texto) | Idem |
 | **Grafana** (túnel) | Servidor: latencia por ruta, CPU/memoria de host y contenedores, event loop, pool de PostgreSQL, consultas costosas, Web Vitals por escenario y la fila **Generador (k6)** | Rango de tiempo = ventana del `meta.json` |
 | **GA4** | Embudo, eventos y Web Vitals segmentados por `escenario_prueba` | Informes → Tiempo real / Explorar (filtrar por `escenario_prueba`) |
 
@@ -230,6 +239,13 @@ throughput, tasa de error, utilización de recursos y otros signos vitales); y
 - Pocos navegadores reales: la muestra de Web Vitals y GA4 es pequeña; GA4
   puede filtrar tráfico de navegadores automatizados.
 - Con más de 200 compradores simultáneos algunas cuentas de prueba coinciden.
+- **Límite de conexiones del generador doméstico**: desde una red doméstica, k6
+  no pudo abrir más de ~400 conexiones simultáneas con la VM (error 1211,
+  *dial timeout*, sin que las conexiones llegaran al servidor). Por eso el
+  estrés se ejecuta con `FACTOR_PAUSAS=0.25`: misma tasa de sesiones y mismas
+  peticiones por sesión, pero ~4 veces menos usuarios "leyendo" a la vez. La
+  carga sobre el servidor (peticiones/s) es la misma; cambia la concurrencia
+  del lado del cliente.
 - `experimental-prometheus-rw` está marcado como obsoleto para k6 v3.
 
 ---

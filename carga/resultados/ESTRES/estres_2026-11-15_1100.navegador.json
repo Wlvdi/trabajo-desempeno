@@ -1,0 +1,211 @@
+{
+  "metrics": {
+    "browser_web_vital_inp": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 4,
+        "p(75)": 8,
+        "p(90)": 8,
+        "p(95)": 8,
+        "max": 8,
+        "count": 12,
+        "avg": 4
+      }
+    },
+    "browser_web_vital_cls": {
+      "values": {
+        "p(90)": 0.008676622178819444,
+        "p(95)": 0.008676622178819444,
+        "max": 0.00869723849826389,
+        "count": 185,
+        "avg": 0.003094957572776637,
+        "med": 0.000055738290150960286,
+        "p(75)": 0.00391015625
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "browser_http_req_failed": {
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 2718
+      },
+      "type": "rate",
+      "contains": "default"
+    },
+    "browser_web_vital_lcp": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 137192,
+        "count": 185,
+        "avg": 1095.2864864864864,
+        "med": 160,
+        "p(75)": 208,
+        "p(90)": 351.19999999999993,
+        "p(95)": 1866.399999999976
+      }
+    },
+    "browser_web_vital_ttfb": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 36.06000000033528,
+        "p(95)": 47.36000000052148,
+        "max": 5156.4000000003725,
+        "count": 185,
+        "avg": 143.38918918923954,
+        "med": 6,
+        "p(75)": 21.800000000745058
+      }
+    },
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 47,
+        "rate": 0.050537602946390266
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 1,
+        "passes": 92,
+        "fails": 0
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "browser_web_vital_fcp": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(75)": 156,
+        "p(90)": 210.39999999999998,
+        "p(95)": 315.19999999999925,
+        "max": 137192,
+        "count": 185,
+        "avg": 972.1945945945946,
+        "med": 76
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "browser_http_req_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 44.435599300000014,
+        "p(95)": 62.631650150000006,
+        "max": 6027.136001,
+        "count": 2718,
+        "avg": 51.96360078476819,
+        "med": 10.6669995,
+        "p(75)": 23.613750749999998
+      }
+    },
+    "browser_data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "rate": 1921.1063308959413,
+        "count": 1786630
+      }
+    },
+    "iteration_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(90)": 18113.726770999998,
+        "p(95)": 21305.789996999993,
+        "max": 137308.977532,
+        "count": 47,
+        "avg": 17355.036891765958,
+        "med": 13865.825852,
+        "p(75)": 15522.035443
+      }
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "browser_data_received": {
+      "values": {
+        "count": 29019520,
+        "rate": 31203.76552031556
+      },
+      "type": "counter",
+      "contains": "data"
+    }
+  },
+  "root_group": {
+    "checks": [
+      {
+        "id": "8c82ea67d4308aba0d298a5f01fe0573",
+        "passes": 46,
+        "fails": 0,
+        "name": "home cargó",
+        "path": "::home cargó"
+      },
+      {
+        "fails": 0,
+        "name": "carrito cargó",
+        "path": "::carrito cargó",
+        "id": "3519a183d4f752ea835b18e3f5219f3f",
+        "passes": 46
+      }
+    ],
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": []
+  },
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "med",
+      "p(75)",
+      "p(90)",
+      "p(95)",
+      "max",
+      "count"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 930000.578972
+  }
+}

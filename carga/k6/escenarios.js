@@ -19,6 +19,10 @@
  *   ESTRES_ESCALONES     iteraciones/s de cada meseta del estrés (por defecto "20,50,100,150")
  *   ESTRES_MESETA        duración de cada meseta (por defecto 2m30s)
  *   MAX_VUS              VUs máximos del estrés (por defecto 1000)
+ *   FACTOR_PAUSAS        multiplica el think time (0 < f ≤ 1, por defecto 1). Con 0,25 cada
+ *                        sesión dura ~4 veces menos y k6 necesita ~4 veces menos VUs (y
+ *                        conexiones) para la misma tasa de sesiones: N = X·(R+Z). Se usa en
+ *                        el estrés cuando la red del generador limita las conexiones.
  *   PERFIL               fuerza un perfil (navegante | buscador | abandono | comprador);
  *                        solo para depurar: sin él, los perfiles se sortean por peso
  *   SALIDA_JSON          archivo del resumen JSON (lo define ejecutar.sh)
@@ -43,6 +47,7 @@ const ESCALONES = (__ENV.ESTRES_ESCALONES || '20,50,100,150').split(',').map(Num
 const MESETA = __ENV.ESTRES_MESETA || '2m30s'
 const MAX_VUS = Number(__ENV.MAX_VUS || 1000)
 const PERFIL = (__ENV.PERFIL || '').toLowerCase()
+const FACTOR_PAUSAS = Number(__ENV.FACTOR_PAUSAS || 1)
 
 /** Cuentas de prueba (una por VU; ver carga/k6/datos/usuarios.csv). */
 const USUARIOS = new SharedArray('usuarios', () =>
@@ -112,6 +117,9 @@ if (PERFIL && !PERFILES_USUARIO.includes(PERFIL)) {
 if (!(PROPORCION_INVITADO >= 0 && PROPORCION_INVITADO <= 1)) {
   throw new Error(`PROPORCION_INVITADO debe estar entre 0 y 1 (recibido: ${__ENV.PROPORCION_INVITADO})`)
 }
+if (!(FACTOR_PAUSAS > 0 && FACTOR_PAUSAS <= 1)) {
+  throw new Error(`FACTOR_PAUSAS debe estar entre 0 (excluido) y 1 (recibido: ${__ENV.FACTOR_PAUSAS})`)
+}
 
 if (!PERFILES[ESCENARIO]) {
   throw new Error(`ESCENARIO desconocido: "${ESCENARIO}". Usa: ${Object.keys(PERFILES).join(', ')}`)
@@ -170,7 +178,7 @@ export const options = {
 // Ayudantes
 // ---------------------------------------------------------------------------
 /** Pausa aleatoria entre min y max segundos (think time). */
-const pausa = (min, max) => sleep(min + Math.random() * (max - min))
+const pausa = (min, max) => sleep((min + Math.random() * (max - min)) * FACTOR_PAUSAS)
 const elegir = (lista) => lista[Math.floor(Math.random() * lista.length)]
 const entero = (min, max) => min + Math.floor(Math.random() * (max - min + 1))
 
@@ -206,7 +214,7 @@ export function setup() {
   if (productos.length === 0) throw new Error('No hay productos con stock: ejecuta npm run seed')
 
   if (!CONTRASENA) console.warn('[k6] Sin CONTRASENA_CLIENTES: los compradores comprarán como invitado.')
-  console.log(`[k6] ${ESCENARIO} contra ${BASE_URL} | ${productos.length} productos | invitados: ${PROPORCION_INVITADO * 100}%`)
+  console.log(`[k6] ${ESCENARIO} contra ${BASE_URL} | ${productos.length} productos | invitados: ${PROPORCION_INVITADO * 100}% | factor de pausas: ${FACTOR_PAUSAS}`)
   return { productos, categorias }
 }
 

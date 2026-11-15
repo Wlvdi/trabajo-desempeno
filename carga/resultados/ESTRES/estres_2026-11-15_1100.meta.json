@@ -1,0 +1,23 @@
+{
+  "escenario": "estres",
+  "repeticion": "R2",
+  "nota": "lanzada con REPETICION=R1 por error; es la segunda repetición válida (corregido)",
+  "base_url": "https://subligol-utem.chilecentral.cloudapp.azure.com",
+  "commit": "c4cbbd6",
+  "inicio": "2026-11-15T11:00:52-03:00",
+  "fin": "2026-11-15T11:18:31-03:00",
+  "umbrales_cumplidos": false,
+  "proporcion_invitado": "0",
+  "factor_pausas": "0.25",
+  "estres_escalones": "10,20,30,40,50,60",
+  "estres_meseta": "2m",
+  "max_vus": "1000",
+  "navegador_real": "1",
+  "prometheus": "1",
+  "generador": {
+    "equipo": "cachyos-KDEPlasma",
+    "cpus": 6,
+    "memoria": "23Gi",
+    "k6": "v2.4.0"
+  }
+}

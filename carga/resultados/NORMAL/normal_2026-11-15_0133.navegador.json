@@ -1,0 +1,211 @@
+{
+  "options": {
+    "summaryTrendStats": [
+      "avg",
+      "med",
+      "p(75)",
+      "p(90)",
+      "p(95)",
+      "max",
+      "count"
+    ],
+    "summaryTimeUnit": "",
+    "noColor": false
+  },
+  "state": {
+    "isStdOutTTY": false,
+    "isStdErrTTY": false,
+    "testRunDurationMs": 912942.753424
+  },
+  "metrics": {
+    "iterations": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 61,
+        "rate": 0.06681689489425154
+      }
+    },
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    },
+    "browser_data_sent": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 2446724,
+        "rate": 2680.0409892334865
+      }
+    },
+    "browser_web_vital_cls": {
+      "values": {
+        "avg": 0.003145637729725992,
+        "med": 0.00198294727007548,
+        "p(75)": 0.004549761715862486,
+        "p(90)": 0.008676622178819444,
+        "p(95)": 0.008676622178819444,
+        "max": 0.008676622178819444,
+        "count": 244
+      },
+      "type": "trend",
+      "contains": "default"
+    },
+    "browser_web_vital_inp": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 12,
+        "max": 16,
+        "count": 11,
+        "avg": 2.909090909090909,
+        "med": 0,
+        "p(75)": 4,
+        "p(90)": 8
+      }
+    },
+    "browser_http_req_duration": {
+      "contains": "time",
+      "values": {
+        "p(95)": 52.0906,
+        "max": 5268.59,
+        "count": 3644,
+        "avg": 55.48765804802435,
+        "med": 10.259501,
+        "p(75)": 20.65750025,
+        "p(90)": 33.171799299999996
+      },
+      "type": "trend"
+    },
+    "vus": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "iteration_duration": {
+      "values": {
+        "avg": 14786.234683590166,
+        "med": 14389.088845,
+        "p(75)": 15323.645119,
+        "p(90)": 16312.141863,
+        "p(95)": 19540.368924,
+        "max": 20217.186507,
+        "count": 61
+      },
+      "type": "trend",
+      "contains": "time"
+    },
+    "browser_http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 3644
+      }
+    },
+    "browser_web_vital_ttfb": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "avg": 12.016393442928303,
+        "med": 5.799999997019768,
+        "p(75)": 16.27500000037253,
+        "p(90)": 32.269999996572736,
+        "p(95)": 33.94000000022351,
+        "max": 48.20000000298023,
+        "count": 244
+      }
+    },
+    "vus_max": {
+      "type": "gauge",
+      "contains": "default",
+      "values": {
+        "value": 1,
+        "min": 1,
+        "max": 1
+      }
+    },
+    "browser_data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 38483509,
+        "rate": 42153.25534450792
+      }
+    },
+    "checks": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 1,
+        "passes": 122,
+        "fails": 0
+      }
+    },
+    "browser_web_vital_fcp": {
+      "contains": "time",
+      "values": {
+        "med": 68,
+        "p(75)": 111,
+        "p(90)": 172,
+        "p(95)": 179.39999999999998,
+        "max": 248,
+        "count": 244,
+        "avg": 90.08196721311475
+      },
+      "type": "trend"
+    },
+    "browser_web_vital_lcp": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 148,
+        "p(75)": 173,
+        "p(90)": 192,
+        "p(95)": 214.79999999999995,
+        "max": 5412,
+        "count": 244,
+        "avg": 257.1639344262295
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 0,
+        "rate": 0
+      }
+    }
+  },
+  "root_group": {
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e",
+    "groups": [],
+    "checks": [
+      {
+        "passes": 61,
+        "fails": 0,
+        "name": "home cargó",
+        "path": "::home cargó",
+        "id": "8c82ea67d4308aba0d298a5f01fe0573"
+      },
+      {
+        "name": "carrito cargó",
+        "path": "::carrito cargó",
+        "id": "3519a183d4f752ea835b18e3f5219f3f",
+        "passes": 61,
+        "fails": 0
+      }
+    ],
+    "name": ""
+  }
+}

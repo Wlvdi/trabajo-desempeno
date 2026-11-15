@@ -39,3 +39,7 @@ carga/resultados/**/*.ndjson
 carga/resultados/**/*.navegador.log
 # El registro de CPU del generador sí es evidencia (la regla *.log de arriba lo excluiría).
 !carga/resultados/**/*.generador.log
+# Métricas del servidor exportadas de Prometheus: sí se versionan (son livianas y son evidencia).
+!carga/resultados/**/*.servidor.csv
+!carga/resultados/**/*.rutas.csv
+!carga/resultados/**/*.consultas.csv
