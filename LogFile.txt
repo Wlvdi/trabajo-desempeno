@@ -1057,6 +1057,6 @@ RESUMEN DE LO GENERADO:
   :has-text no soportado, percentiles por página en el resumen,
   etiqueta escenario en k6 v2, unidad del panel de checkout y vmstat
   en formato estándar. No se ejecutó carga contra la VM.
-COMMIT: pendiente
-DEPLOY: pendiente
+COMMIT: 1830e2f feat(carga): generadores k6 con perfiles, escenarios, navegador real y protocolo de ejecución
+DEPLOY: sí (git pull en la VM; Grafana con 36 paneles, 15-11-26 00:20)
 ==================================================================

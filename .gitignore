@@ -37,3 +37,5 @@ carga/resultados/**/*.csv
 carga/resultados/**/*.csv.gz
 carga/resultados/**/*.ndjson
 carga/resultados/**/*.navegador.log
+# El registro de CPU del generador sí es evidencia (la regla *.log de arriba lo excluiría).
+!carga/resultados/**/*.generador.log
