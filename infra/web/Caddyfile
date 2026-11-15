@@ -1,9 +1,8 @@
 # Caddy: HTTPS automático (Let's Encrypt) para DOMINIO, proxy de /api a la
 # API y la tienda (SPA) para todo lo demás.
 # Con DOMINIO=localhost usa un certificado interno (pruebas locales).
-{
-	email {$CORREO_ACME}
-}
+# Sin correo de ACME: Let's Encrypt ya no envía avisos de vencimiento y Caddy
+# renueva el certificado automáticamente.
 
 {$DOMINIO} {
 	encode zstd gzip

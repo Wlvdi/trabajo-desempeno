@@ -24,7 +24,6 @@ services:
     restart: unless-stopped
     environment:
       DOMINIO: ${DOMINIO:?Define DOMINIO en .env (por ejemplo subligol-utem.chilecentral.cloudapp.azure.com)}
-      CORREO_ACME: ${CORREO_ACME:?Define CORREO_ACME en .env (correo para avisos de Let's Encrypt)}
     ports:
       - "80:80"
       - "443:443"

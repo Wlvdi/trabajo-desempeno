@@ -111,7 +111,7 @@ Antes de cada prueba de carga conviene volver a ejecutarlo.
 | `PAGO_MOCK` | Habilita el pago simulado del checkout |
 | `GRAFANA_CONTRASENA` | Contraseña del usuario `admin` de Grafana |
 | `PROMETHEUS_PUERTO_HOST`, `GRAFANA_PUERTO_HOST`, `METRICAS_PUERTO` | Puertos del monitoreo |
-| `DOMINIO`, `CORREO_ACME` | Producción: dominio público y correo para Let's Encrypt |
+| `DOMINIO` | Producción: dominio público (Caddy obtiene el certificado HTTPS) |
 
 ---
 
@@ -131,7 +131,7 @@ PostgreSQL, Prometheus y Grafana siguen solo en `127.0.0.1`.
 ```bash
 curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER   # cerrar sesión y volver a entrar
 git clone https://github.com/Wlvdi/trabajo-desempeno.git && cd trabajo-desempeno
-cp .env.example .env && nano .env   # secretos propios, DOMINIO, CORREO_ACME, PAGO_MOCK=true, VITE_GA_MEASUREMENT_ID
+cp .env.example .env && nano .env   # secretos propios, DOMINIO, PAGO_MOCK=true, VITE_GA_MEASUREMENT_ID
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 docker compose exec api npm run migrate && docker compose exec api npm run seed
 ```
