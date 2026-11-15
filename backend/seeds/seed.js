@@ -193,9 +193,19 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       contrasenaClientes: process.env.SEED_CONTRASENA_CLIENTES,
       contrasenaAdmin: process.env.SEED_CONTRASENA_ADMIN
     })
-    const csv = await escribirCsvUsuariosK6()
     console.table(resumen)
-    console.log(`[seed] Listo en ${((Date.now() - inicio) / 1000).toFixed(1)} s. CSV para k6: ${path.relative(process.cwd(), csv)}`)
+    // El CSV solo hace falta donde se ejecuta k6 (ya está versionado en
+    // carga/k6/datos/). Dentro del contenedor no existe esa carpeta: se avisa y sigue.
+    let csv = null
+    try {
+      csv = await escribirCsvUsuariosK6()
+    } catch (err) {
+      console.warn(`[seed] No se escribió el CSV de usuarios para k6 (${err.code || err.message}); no afecta los datos.`)
+    }
+    console.log(
+      `[seed] Listo en ${((Date.now() - inicio) / 1000).toFixed(1)} s.` +
+        (csv ? ` CSV para k6: ${path.relative(process.cwd(), csv)}` : '')
+    )
   } catch (err) {
     console.error(`[seed] ${err.message}`)
     process.exitCode = 1

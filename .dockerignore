@@ -1,0 +1,15 @@
+# Contexto del build del frontend (infra/web/Dockerfile).
+# Nunca enviar secretos ni dependencias locales a la imagen.
+.env
+.env.*
+!.env.example
+node_modules
+dist
+.git
+backend
+carga
+load_tests
+infra/grafana
+infra/prometheus
+*.pdf
+*.log

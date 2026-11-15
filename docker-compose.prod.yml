@@ -1,0 +1,42 @@
+# Producción (VM): se usa JUNTO con docker-compose.yml.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Cambios respecto del entorno de desarrollo:
+#   - Se agrega "web" (Caddy): tienda + HTTPS automático en los puertos 80 y 443.
+#   - La API deja de publicar el puerto 3000: solo se alcanza a través de Caddy.
+#   - PostgreSQL, Prometheus y Grafana siguen solo en 127.0.0.1 (túnel SSH).
+
+services:
+  api:
+    ports: !reset []
+    environment:
+      # Para `docker compose exec api npm run seed` (usuarios de prueba).
+      SEED_CONTRASENA_CLIENTES: ${SEED_CONTRASENA_CLIENTES:-}
+      SEED_CONTRASENA_ADMIN: ${SEED_CONTRASENA_ADMIN:-}
+
+  web:
+    build:
+      context: .
+      dockerfile: infra/web/Dockerfile
+      args:
+        VITE_GA_MEASUREMENT_ID: ${VITE_GA_MEASUREMENT_ID:-}
+        VITE_GA_DEBUG: ${VITE_GA_DEBUG:-false}
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO:?Define DOMINIO en .env (por ejemplo subligol-utem.chilecentral.cloudapp.azure.com)}
+      CORREO_ACME: ${CORREO_ACME:?Define CORREO_ACME en .env (correo para avisos de Let's Encrypt)}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      # Certificados de Let's Encrypt: se conservan entre reinicios.
+      - datos_caddy:/data
+      - config_caddy:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  datos_caddy:
+  config_caddy:

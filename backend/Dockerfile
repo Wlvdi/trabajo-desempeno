@@ -9,6 +9,11 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY src ./src
+# Migraciones y seed: permiten ejecutar `docker compose exec api npm run migrate`
+# y `npm run seed` en la VM sin instalar Node fuera de Docker.
+COPY migraciones ./migraciones
+COPY scripts ./scripts
+COPY seeds ./seeds
 
 # No ejecutar como root.
 USER node

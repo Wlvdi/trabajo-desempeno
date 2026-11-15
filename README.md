@@ -12,7 +12,7 @@ analizar su desempeño (guía: `guia_desempeno_sistemas.pdf`).
 
 ## Enlaces
 - Repositorio: https://github.com/Wlvdi/trabajo-desempeno
-- Sitio desplegado: _pendiente (deploy)_
+- Sitio desplegado: https://subligol-utem.chilecentral.cloudapp.azure.com
 
 ---
 
@@ -52,6 +52,7 @@ analizar su desempeño (guía: `guia_desempeno_sistemas.pdf`).
 | Servicio | URL en el equipo | Notas |
 |---|---|---|
 | Tienda (Vite, desarrollo) | http://localhost:5173 | `/api` se reenvía a la API |
+| Tienda (producción, Caddy) | https://`DOMINIO` | Solo con `docker-compose.prod.yml` |
 | API | http://localhost:3000/api | |
 | Métricas de la API | (interno) `api:9464/metrics` | No se publica: solo lo lee Prometheus |
 | PostgreSQL | 127.0.0.1:5432 | Solo desde el propio equipo |
@@ -110,6 +111,44 @@ Antes de cada prueba de carga conviene volver a ejecutarlo.
 | `PAGO_MOCK` | Habilita el pago simulado del checkout |
 | `GRAFANA_CONTRASENA` | Contraseña del usuario `admin` de Grafana |
 | `PROMETHEUS_PUERTO_HOST`, `GRAFANA_PUERTO_HOST`, `METRICAS_PUERTO` | Puertos del monitoreo |
+| `DOMINIO`, `CORREO_ACME` | Producción: dominio público y correo para Let's Encrypt |
+
+---
+
+## Deploy (VM en Azure)
+
+Producción usa `docker-compose.yml` **más** `docker-compose.prod.yml`, que
+agrega **Caddy** (`infra/web/`: compila la tienda, sirve HTTPS automático con
+Let's Encrypt y reenvía `/api` a la API) y deja de publicar el puerto 3000.
+PostgreSQL, Prometheus y Grafana siguen solo en `127.0.0.1`.
+
+- VM: Ubuntu Server 24.04, 2 vCPU y 4 GB (Azure for Students, región
+  Chile Central), con los puertos 22, 80 y 443 abiertos.
+- Dominio: `subligol-utem.chilecentral.cloudapp.azure.com` (nombre DNS de la
+  IP pública).
+
+**Primera vez** (en la VM, por SSH):
+```bash
+curl -fsSL https://get.docker.com | sh && sudo usermod -aG docker $USER   # cerrar sesión y volver a entrar
+git clone https://github.com/Wlvdi/trabajo-desempeno.git && cd trabajo-desempeno
+cp .env.example .env && nano .env   # secretos propios, DOMINIO, CORREO_ACME, PAGO_MOCK=true, VITE_GA_MEASUREMENT_ID
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose exec api npm run migrate && docker compose exec api npm run seed
+```
+
+**Actualizar** después de un `git push`:
+```bash
+cd trabajo-desempeno && git pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+docker compose exec api npm run migrate
+```
+
+**Monitoreo de la VM** desde un PC: `ssh -L 3001:localhost:3001 -L 9090:localhost:9090 azureuser@<dominio>`
+y abrir http://localhost:3001 (Grafana) y http://localhost:9090 (Prometheus).
+
+**Costo:** detener la VM desde el portal cuando no se use (queda
+"desasignada" y no consume crédito de cómputo). No detenerla durante las
+pruebas de carga ni el día de la revisión.
 
 ---
 
@@ -191,7 +230,6 @@ que apuntan a rutas de la SPA y no miden el servidor.
 - **`/metrics` en un puerto interno** que no se publica.
 
 ## Pendientes
-- Deploy en una VM con HTTPS (URL pública para el profesor y para GA4).
 - Pruebas de carga con k6 (Fase 1.2) y análisis de desempeño (Fase 2).
 - **Seguridad:** límite de intentos (rate limiting) en login y registro; no
   se aplica todavía porque interferiría con las pruebas de carga.
