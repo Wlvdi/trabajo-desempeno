@@ -1060,3 +1060,134 @@ RESUMEN DE LO GENERADO:
 COMMIT: 1830e2f feat(carga): generadores k6 con perfiles, escenarios, navegador real y protocolo de ejecución
 DEPLOY: sí (git pull en la VM; Grafana con 36 paneles, 15-11-26 00:20)
 ==================================================================
+
+==================================================================
+ID: 0015
+FECHA: 15-11-26 HORA: 00:33 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Ya hice la prueba piloto contra la VM: revísala y dime qué piensas.
+Mantén los resultados en una carpeta por escenario y vamos con la
+siguiente prueba. Después de cada ejecución (baja R1, R2, R3 y normal
+R1, R2, R3) revisa los resultados y dame el comando de la siguiente.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Calibración con la piloto (R02): p95 17 ms, 0 % errores; capacidad
+  estimada con la ley de utilización ≈ 22 sesiones/s, por lo que los
+  escalones del estrés se recalibran.
+- carga/ejecutar.sh guarda por escenario:
+  carga/resultados/<ESCENARIO>/<escenario>_<AAAA-MM-DD>_<HHMM>.*
+  (HUMO, PILOTO, BAJA, NORMAL, ESTRES).
+- carga/tabla-repeticiones.mjs: junta R1..Rn de un escenario y entrega
+  promedio [mín–máx] de cada percentil por página (guía 6.4.1), más
+  indicadores globales y Web Vitals del navegador real.
+- Resultados contra la VM: baja R1–R3 (p95 global 18,5 ms [17,5–20,0])
+  y normal R1–R3 (p95 17,5 ms [16,9–18,1]; R3 ejecutada 7 h después con
+  los mismos resultados), 0 % errores y umbrales cumplidos. Little:
+  N = X·(R+Z) ≈ 5 VUs en baja y ≈ 30 en normal. Con la normal se estima
+  ≈ 37 sesiones/s de capacidad → escalones del estrés 10…60 ses/s.
+- carga/bitacora.md (R01–R08) y RESUMEN.md de BAJA y NORMAL.
+- Archivos: carga/{ejecutar.sh,tabla-repeticiones.mjs,bitacora.md,
+  README.md}, carga/resultados/{HUMO,PILOTO,BAJA,NORMAL}/, README.md,
+  AGENTS.md, .gitignore (registro de CPU del generador versionado).
+- Instalaciones: ninguna. Tests: no aplica (análisis de resultados).
+COMMIT: c4cbbd6 feat(carga): resultados de humo, piloto y baja (3 repeticiones) y tabla agregada
+        (normal R1–R3 en 707a04d)
+DEPLOY: no (sin cambios en la aplicación)
+==================================================================
+
+==================================================================
+ID: 0016
+FECHA: 15-11-26 HORA: 10:06 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+En la prueba de estrés me aparece todo el rato "WARN request failed".
+Ayúdame a entender qué pasa y cómo repetirla (el tiempo apremia). ¿Es
+necesario mirar Grafana o queda todo documentado en archivos? Mientras
+ejecuto el estrés de nuevo, haz lo que propones para no tener que sacar
+capturas de pantalla: que los datos salgan directo de Prometheus.
+Después revisa las tres repeticiones y haz el commit.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diagnóstico de la primera ejecución (R09): errores 1211 (dial timeout)
+  desde ~400 VUs; las conexiones no llegaban a la VM (servidor sano, CPU
+  ≤ 64 %). Causa: límite de conexiones de la red doméstica del
+  generador. Se conserva como evidencia, marcada inválida.
+- FACTOR_PAUSAS en carga/k6/escenarios.js (pausas × 0,25 → menos VUs
+  para la misma tasa); metadatos con factor, escalones, meseta y VUs.
+- carga/exportar-servidor.sh + exportar_servidor.py: consultan el
+  Prometheus de la VM por SSH y guardan .servidor.csv (cada 15 s: req/s,
+  percentiles, errores, CPU de la VM y por contenedor, memoria, disco,
+  event loop, pool, argon2, compras), .rutas.csv y .consultas.csv
+  (pg_stat_statements). ejecutar.sh lo llama al terminar; se exportaron
+  las 12 pruebas. Reemplaza las capturas de Grafana.
+- carga/tabla-saturacion.mjs: tabla 6.3 por meseta (cliente + servidor).
+- Resultados del estrés R1–R3: rodilla en ~40 ses/s (~155 req/s, CPU
+  95 %, p95 705 ms [554–914]); criterio de saturación superado en 50
+  ses/s; máximo ~172 req/s; recurso limitante: CPU de la VM compartida
+  por API y PostgreSQL (la ley de utilización predijo ~41 ses/s). La
+  consulta de productos relacionados ocupa ~79 % del tiempo de
+  PostgreSQL (propuesta de mejora). Sin errores 5xx del servidor.
+- carga/resultados/ESTRES/RESUMEN.md y NORMAL/RESUMEN.md; bitácora con
+  R09–R11, tablas 6.3 y 6.4 (Web Vitals: LCP p75 0,17 / 0,17 / 0,20 s).
+- Archivos: carga/{exportar-servidor.sh,exportar_servidor.py,
+  tabla-saturacion.mjs,ejecutar.sh,bitacora.md,README.md},
+  carga/k6/escenarios.js, carga/resultados/{NORMAL,ESTRES}/, .gitignore.
+- Instalaciones: ninguna (la VM usa solo la biblioteca estándar de
+  Python). Tests: exportación verificada contra las 12 pruebas.
+COMMIT: 707a04d feat(carga): resultados de normal y estrés (3 repeticiones), exportación del servidor y tabla de saturación
+DEPLOY: no (sin cambios en la aplicación)
+==================================================================
+
+==================================================================
+ID: 0017
+FECHA: 15-11-26 HORA: 11:58 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+El enunciado (Trabajo Semestre 2) pide un checkout simulado con el
+sandbox de algún medio de pago disponible en Chile, sin pasarela real.
+¿Lo tenemos? Si no, impleméntalo, pero sin cambiar GA4: que quede
+implementado y sigamos usando las métricas y todo lo que ya tenemos.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: Webpay Plus de Transbank en ambiente de integración, como
+  segundo medio de pago. El pago simulado ("mock") sigue por defecto y
+  lo siguen usando las pruebas de carga (guía 5.3: no cargar el sandbox
+  de un tercero); los resultados ya medidos no cambian.
+- Backend: checkout con medio_pago "webpay" deja la venta PENDIENTE
+  (stock reservado, carrito intacto) y responde la URL de Webpay; la
+  transacción con Transbank se crea fuera de la transacción de la base.
+  Ruta /api/pagos/webpay/retorno (GET/POST): confirma el pago y deja la
+  venta PAGADO (vacía el carrito) o ANULADO (devuelve stock); también
+  anulación por el comprador y tiempo agotado; idempotente. URL_PUBLICA
+  para el retorno (en la VM, https://DOMINIO).
+- Migración 005_webpay.sql: pago_token, carrito_id, trigger
+  trg_anular_venta (devuelve stock y audita VENTA_ANULADA_ENTRADA) y
+  vistas del dashboard solo con ventas PAGADO.
+- Frontend: selección de medio de pago, envío a Webpay y resultado en
+  /orden/:id. GA4 sin cambios: purchase se envía con la misma
+  trackPurchase al volver con el pago aprobado (una sola vez por orden).
+- Archivos: backend/src/{pagos.js,config.js,app.js,metricas.js,
+  rutas/checkout.js,rutas/pagos.js,consultas/ordenes.js},
+  backend/migraciones/005_webpay.sql, backend/tests/webpay.test.js,
+  src/services/{api.js,compraWebpay.js}, src/views/store/
+  {CheckoutStoreView,OrderSuccessStoreView,MyOrdersStoreView}.jsx,
+  docker-compose*.yml, .env.example.
+- Instalaciones: transbank-sdk 6.1.1 (SDK oficial; trae las
+  credenciales públicas de prueba).
+- Tests: 384 backend (Webpay falso: aprobado, rechazado, anulado, tiempo
+  agotado, reintento, error de conexión) y 88 frontend; build OK. Prueba
+  real contra el sandbox (local y en la VM) y compra aprobada con
+  tarjeta de prueba verificada por el usuario.
+COMMIT: 49cc5e7 feat(pagos): Webpay Plus en ambiente de integración de Transbank
+DEPLOY: sí (git pull + build en la VM y migración 005, 15-11-26 12:48)
+==================================================================
