@@ -438,6 +438,12 @@ describe('Panel de administración', () => {
     expect(err.detalle.productos).toEqual(productos)
   })
 
+  it('el historial de ventas puede filtrar solo los pedidos web', async () => {
+    const f = simularFetch({ cuerpo: [] })
+    await fetchHistorialVentas(15, { canal: 'Web' })
+    expect(f.mock.calls[0][0]).toBe('/api/admin/ventas?limite=15&canal=Web')
+  })
+
   it('dashboard, auditoría e historiales usan sus rutas y límites', async () => {
     const f = simularFetch({ cuerpo: {} }, { cuerpo: [] }, { cuerpo: [] }, { cuerpo: [] }, { cuerpo: [] })
     await fetchDashboardData()

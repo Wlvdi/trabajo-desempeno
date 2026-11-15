@@ -6,13 +6,15 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import request from 'supertest'
 import { prepararCatalogo } from './ayudantes.js'
 import { productosConStock, stockDe, tokensDePrueba } from './ayudantes-admin.js'
+import { DESPACHO } from './ayudantes-checkout.js'
+import { firmarToken } from '../src/seguridad/tokens.js'
 
 let pool
 let app
 let tokens
+let datos
 
 beforeAll(async () => {
-  let datos
   ;({ pool, app, datos } = await prepararCatalogo())
   tokens = tokensDePrueba(datos)
 }, 120_000)
@@ -172,5 +174,59 @@ describe('GET /api/admin/ventas', () => {
     expect((await request(app).get('/api/admin/ventas').set('Authorization', tokens.admin)).body).toHaveLength(15)
     const exceso = await request(app).get('/api/admin/ventas').query({ limite: 0 }).set('Authorization', tokens.admin)
     expect(exceso.status).toBe(400)
+  })
+})
+
+describe('GET /api/admin/ventas: datos de despacho de los pedidos web', () => {
+  /** Compra en la tienda (con sesión si se entrega usuario; si no, como invitado). */
+  async function comprarEnTienda(producto, usuario) {
+    const auth = usuario ? { Authorization: `Bearer ${firmarToken({ id: usuario.id, rol: 'cliente' })}` } : {}
+    const carrito = await request(app).post('/api/carrito/items').set(auth).send({ producto_id: producto.id, cantidad: 1 })
+    const req = request(app).post('/api/checkout').set(auth)
+    if (!usuario) req.set('X-Carrito-Id', carrito.body.id)
+    const despacho = usuario ? DESPACHO : { ...DESPACHO, email: 'invitado.despacho@ejemplo.cl' }
+    const r = await req.send({ medio_pago: 'mock', despacho })
+    expect(r.status).toBe(201)
+    return r.body
+  }
+
+  it('?canal=Web devuelve solo pedidos web con despacho, correo, envío, pago y tipo de cliente', async () => {
+    const [p1, p2] = await productosConStock(pool, 2, 5)
+    const invitado = await comprarEnTienda(p1)
+    const registrado = await comprarEnTienda(p2, datos.clientes[30])
+
+    const r = await request(app).get('/api/admin/ventas').query({ canal: 'Web', limite: 2 }).set('Authorization', tokens.admin)
+    expect(r.status).toBe(200)
+    expect(r.body.every((v) => v.canal_venta === 'Web')).toBe(true)
+    const porCodigo = Object.fromEntries(r.body.map((v) => [v.codigo, v]))
+
+    expect(porCodigo[invitado.codigo]).toMatchObject({
+      tipo_cliente: 'invitado',
+      cliente_email: 'invitado.despacho@ejemplo.cl',
+      despacho: { direccion: DESPACHO.direccion, comuna: DESPACHO.comuna, region: DESPACHO.region, telefono: DESPACHO.telefono },
+      medio_pago: 'mock',
+      codigo_autorizacion: expect.stringMatching(/^MOCK-/),
+      costo_envio: expect.any(Number)
+    })
+    expect(porCodigo[registrado.codigo]).toMatchObject({
+      tipo_cliente: 'registrado',
+      cliente_email: datos.clientes[30].email
+    })
+  })
+
+  it('las ventas manuales no traen despacho ni tipo de cliente', async () => {
+    const r = await request(app).get('/api/admin/ventas').query({ canal: 'Instagram', limite: 3 }).set('Authorization', tokens.admin)
+    expect(r.status).toBe(200)
+    expect(r.body.length).toBeGreaterThan(0)
+    for (const v of r.body) {
+      expect(v.canal_venta).toBe('Instagram')
+      expect(v.despacho).toBeNull()
+      expect(v.tipo_cliente).toBeNull()
+    }
+  })
+
+  it('canal desconocido → 400', async () => {
+    const r = await request(app).get('/api/admin/ventas').query({ canal: 'Tiktok' }).set('Authorization', tokens.admin)
+    expect(r.status).toBe(400)
   })
 })

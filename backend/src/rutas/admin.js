@@ -445,9 +445,11 @@ export function rutasAdmin(pool) {
     res.status(201).json(venta)
   })
 
+  // ?canal=Web muestra solo los pedidos de la tienda (con datos de despacho).
   router.get('/ventas', async (req, res) => {
     const limite = entero('limite', req.query.limite, { min: 1, max: LIMITE_HISTORIAL, porDefecto: 15 })
-    res.json(await listarVentas(pool, { limite }))
+    const canal = unoDe('canal', req.query.canal, ['Web', ...CANALES_MANUALES], undefined)
+    res.json(await listarVentas(pool, { limite, canal }))
   })
 
   // --- Dashboard y auditoría -------------------------------------------------

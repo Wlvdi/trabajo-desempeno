@@ -936,3 +936,37 @@ RESUMEN DE LO GENERADO:
 COMMIT: 14f7c3e feat(admin): endpoints del panel de administración
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0012
+FECHA: 14-11-26 HORA: 21:57 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+En el panel de administración la información se actualiza y se ve
+bien, pero no se puede ver a dónde hay que hacer el envío ni los datos
+de contacto del cliente de los pedidos web. Agrega esos datos en el
+panel (sin estado de despacho, no lo necesitamos) y luego seguimos con
+el commit 10 (README y AGENTS.md).
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: GET /api/admin/ventas agrega despacho, cliente_email,
+  costo_envio, medio_pago, codigo_autorizacion y tipo_cliente
+  (invitado o registrado; null en ventas manuales) y acepta ?canal=
+  (Web o canales manuales; 400 si es desconocido). En VentasView,
+  filtro "Todas / Pedidos web", código del pedido y bloque "Datos de
+  despacho" (recibe, correo, teléfono, dirección y depto, comuna y
+  región, costo de envío y código de pago). Sin estado de despacho.
+- Archivos: backend/src/consultas/admin.js, backend/src/rutas/admin.js,
+  backend/tests/admin-ventas.test.js, src/services/api.js,
+  src/services/api.test.js, src/views/VentasView.jsx.
+- Instalaciones: ninguna.
+- Tests: backend 371 OK (3 nuevos); frontend 85 OK (1 nuevo).
+- Build: npm run build OK; verificado en el navegador (Playwright):
+  panel /admin → Ventas → "Pedidos web" muestra el despacho de un
+  pedido de invitado, sin errores de consola.
+COMMIT: pendiente
+DEPLOY: no
+==================================================================

@@ -9,7 +9,8 @@ import {
   ArrowUpRight,
   RefreshCw,
   MessageCircle,
-  Store
+  Store,
+  Truck
 } from 'lucide-react'
 import { fetchProductos, registrarVenta, fetchHistorialVentas } from '../services/api'
 
@@ -23,11 +24,39 @@ function InstagramIcon(props) {
   )
 }
 
+/**
+ * Datos para preparar el envío de un pedido web: contacto, dirección,
+ * costo de despacho y pago (solo visibles para el administrador).
+ */
+function DatosDespacho({ venta, formatCLP }) {
+  const d = venta.despacho || {}
+  const nombre = [d.nombre, d.apellido].filter(Boolean).join(' ')
+  const direccion = [d.direccion, d.depto].filter(Boolean).join(', ')
+  return (
+    <div className="mt-1 mb-1 p-2 rounded-lg bg-white border border-indigo-100 text-[11px] text-slate-600 space-y-0.5">
+      <p className="font-bold text-indigo-700 flex items-center gap-1">
+        <Truck className="w-3.5 h-3.5" /> Datos de despacho
+      </p>
+      {nombre && <p>Recibe: <span className="font-semibold text-slate-800">{nombre}</span></p>}
+      {venta.cliente_email && <p>Correo: {venta.cliente_email}</p>}
+      {d.telefono && <p>Teléfono: {d.telefono}</p>}
+      {direccion && <p>Dirección: <span className="font-semibold text-slate-800">{direccion}</span></p>}
+      {(d.comuna || d.region) && <p>{[d.comuna, d.region].filter(Boolean).join(', ')}</p>}
+      <p>
+        Envío: {Number(venta.costo_envio) === 0 ? 'gratis' : formatCLP(venta.costo_envio)}
+        {venta.codigo_autorizacion && <span className="ml-2 text-slate-400">Pago: {venta.codigo_autorizacion}</span>}
+      </p>
+    </div>
+  )
+}
+
 export default function VentasView({ onVentaExitosa }) {
   const [productos, setProductos] = useState([])
   const [historial, setHistorial] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingHistorial, setLoadingHistorial] = useState(true)
+  /** Historial: true = solo pedidos de la tienda (canal Web). */
+  const [soloWeb, setSoloWeb] = useState(false)
   const [error, setError] = useState(null)
   const [exito, setExito] = useState(null)
 
@@ -51,7 +80,7 @@ export default function VentasView({ onVentaExitosa }) {
     try {
       const [prods, hist] = await Promise.all([
         fetchProductos({ estado: 'activos' }),
-        fetchHistorialVentas(15)
+        fetchHistorialVentas(15, soloWeb ? { canal: 'Web' } : {})
       ])
       setProductos(prods)
       setHistorial(hist)
@@ -71,9 +100,10 @@ export default function VentasView({ onVentaExitosa }) {
     }
   }
 
+  // Carga inicial y al cambiar el filtro del historial.
   useEffect(() => {
     loadData()
-  }, [])
+  }, [soloWeb])
 
   const handleProductoChange = (index, prodId) => {
     const prod = productos.find(p => p.id === prodId)
@@ -397,9 +427,27 @@ export default function VentasView({ onVentaExitosa }) {
                 <Clock className="w-4 h-4 text-slate-400" />
                 Últimas Ventas
               </h3>
-              <button onClick={loadData} className="p-1 text-slate-400 hover:text-slate-600">
-                <RefreshCw className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                {/* Filtro: todas las ventas o solo los pedidos de la tienda (con datos de despacho). */}
+                {[
+                  { valor: false, texto: 'Todas' },
+                  { valor: true, texto: 'Pedidos web' }
+                ].map((op) => (
+                  <button
+                    key={op.texto}
+                    type="button"
+                    onClick={() => setSoloWeb(op.valor)}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition ${
+                      soloWeb === op.valor ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                    }`}
+                  >
+                    {op.texto}
+                  </button>
+                ))}
+                <button onClick={loadData} className="p-1 text-slate-400 hover:text-slate-600">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {loadingHistorial ? (
@@ -417,9 +465,16 @@ export default function VentasView({ onVentaExitosa }) {
                       </span>
                       <span className="text-emerald-700 font-extrabold">{formatCLP(venta.total)}</span>
                     </div>
+                    {venta.codigo && <p className="text-[10px] font-mono text-indigo-600 mb-1">{venta.codigo}</p>}
                     {venta.cliente_nombre && (
-                      <p className="text-[11px] text-slate-600 mb-1">Cliente: {venta.cliente_nombre}</p>
+                      <p className="text-[11px] text-slate-600 mb-1">
+                        Cliente: {venta.cliente_nombre}
+                        {venta.tipo_cliente && (
+                          <span className="ml-1 text-[10px] text-slate-400">({venta.tipo_cliente})</span>
+                        )}
+                      </p>
                     )}
+                    {venta.canal_venta === 'Web' && venta.despacho && <DatosDespacho venta={venta} formatCLP={formatCLP} />}
                     <div className="text-[10px] text-slate-400 mb-1">
                       {new Date(venta.fecha).toLocaleDateString('es-CL', {
                         day: '2-digit',

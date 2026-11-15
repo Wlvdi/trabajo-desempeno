@@ -291,17 +291,25 @@ const DETALLE_VENTA = `coalesce((
  * @param {Consultable} db
  * @param {{ limite?: number, id?: string }} opciones
  */
-export async function listarVentas(db, { limite = 1, id } = {}) {
+export async function listarVentas(db, { limite = 1, id, canal } = {}) {
+  // En las ventas web se incluyen los datos de despacho y contacto para
+  // preparar el envío (el panel es solo para administradores).
   const { rows } = await db.query(
     `select v.id, v.codigo, v.fecha, v.canal_venta, v.estado, v.cliente_nombre, v.notas,
-            v.total::float8 as total, u.email as usuario_email,
+            v.total::float8 as total, v.costo_envio::float8 as costo_envio,
+            v.medio_pago, v.codigo_autorizacion, v.despacho, v.cliente_email,
+            case when v.canal_venta <> 'Web' then null
+                 when v.cliente_id is null then 'invitado'
+                 else 'registrado' end as tipo_cliente,
+            u.email as usuario_email,
             ${DETALLE_VENTA}
        from ventas v
        left join usuarios u on u.id = v.usuario_id
-      where $2::uuid is null or v.id = $2::uuid
+      where ($2::uuid is null or v.id = $2::uuid)
+        and ($3::text is null or v.canal_venta = $3::text)
       order by v.fecha desc, v.id desc
       limit $1`,
-    [limite, id ?? null]
+    [limite, id ?? null, canal ?? null]
   )
   return rows
 }

@@ -400,4 +400,9 @@ export const fetchAuditLogs = (limite = 100) => pedir('GET', '/admin/auditoria',
 
 export const fetchHistorialCompras = (limite = 15) => pedir('GET', '/admin/compras', { query: { limite } })
 
-export const fetchHistorialVentas = (limite = 15) => pedir('GET', '/admin/ventas', { query: { limite } })
+/**
+ * GET /api/admin/ventas. Con { canal: 'Web' } devuelve solo los pedidos de la
+ * tienda, que incluyen despacho, cliente_email, costo_envio y tipo_cliente.
+ */
+export const fetchHistorialVentas = (limite = 15, { canal } = {}) =>
+  pedir('GET', '/admin/ventas', { query: { limite, canal } })
