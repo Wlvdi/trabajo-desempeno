@@ -247,18 +247,42 @@ export async function fusionarCarrito() {
 // ---------------------------------------------------------------------------
 
 /**
- * POST /api/checkout con pago simulado (medio_pago "mock").
+ * POST /api/checkout.
+ * - medioPago "mock" (por defecto): pago simulado; la orden vuelve PAGADO.
+ * - medioPago "webpay": Webpay Plus en ambiente de integración (sandbox de
+ *   Transbank); la orden vuelve PENDIENTE con pago: { url, token } y hay que
+ *   enviar al comprador a Webpay con irAWebpay().
  * - Con sesión: usa el carrito del usuario; el email es el de la cuenta.
  * - Como invitado: usa el carrito anónimo y exige despacho.email. La API
- *   devuelve token_consulta, que se guarda para volver a ver la orden.
+ *   devuelve token_consulta, que se guarda para volver a ver la orden
+ *   (también al regresar desde Webpay).
  * @param {{ despacho: { nombre: string, apellido: string, telefono: string, region: string,
- *   comuna: string, direccion: string, depto?: string, email?: string } }} datos
+ *   comuna: string, direccion: string, depto?: string, email?: string }, medioPago?: 'mock' | 'webpay' }} datos
  * @returns {Promise<object>} la orden creada
  */
-export async function procesarOrdenWeb({ despacho }) {
-  const orden = await pedir('POST', '/checkout', { cuerpo: { medio_pago: 'mock', despacho } })
+export async function procesarOrdenWeb({ despacho, medioPago = 'mock' }) {
+  const orden = await pedir('POST', '/checkout', { cuerpo: { medio_pago: medioPago, despacho } })
   if (orden?.token_consulta) guardarOrdenInvitado(orden.id, orden.token_consulta)
   return orden
+}
+
+/**
+ * Envía al comprador al formulario de pago de Webpay: un POST con token_ws a
+ * la url que entregó la API (así lo exige Transbank). Al terminar, Webpay lo
+ * devuelve a /api/pagos/webpay/retorno y la API lo redirige a /orden/:id.
+ * @param {{ url: string, token: string }} pago
+ */
+export function irAWebpay({ url, token }) {
+  const formulario = document.createElement('form')
+  formulario.method = 'POST'
+  formulario.action = url
+  const campo = document.createElement('input')
+  campo.type = 'hidden'
+  campo.name = 'token_ws'
+  campo.value = token
+  formulario.appendChild(campo)
+  document.body.appendChild(formulario)
+  formulario.submit()
 }
 
 /**

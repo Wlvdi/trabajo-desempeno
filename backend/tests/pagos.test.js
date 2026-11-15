@@ -7,7 +7,8 @@ import {
   UMBRAL_ENVIO_GRATIS,
   autorizarPagoMock,
   costoEnvio,
-  exigirMedioDisponible
+  exigirMedioDisponible,
+  pagoWebpayAprobado
 } from '../src/pagos.js'
 
 describe('costoEnvio', () => {
@@ -39,9 +40,18 @@ describe('exigirMedioDisponible', () => {
     )
   })
 
-  it('responde 501 para webpay, esté o no habilitado el mock', () => {
+  it('acepta webpay (sandbox), esté o no habilitado el mock', () => {
     for (const pagoMock of [true, false]) {
-      expect(() => exigirMedioDisponible('webpay', { pagoMock })).toThrow(expect.objectContaining({ status: 501 }))
+      expect(() => exigirMedioDisponible('webpay', { pagoMock })).not.toThrow()
     }
+  })
+})
+
+describe('pagoWebpayAprobado', () => {
+  it('solo AUTHORIZED con response_code 0', () => {
+    expect(pagoWebpayAprobado({ status: 'AUTHORIZED', response_code: 0 })).toBe(true)
+    expect(pagoWebpayAprobado({ status: 'FAILED', response_code: -1 })).toBe(false)
+    expect(pagoWebpayAprobado({ status: 'AUTHORIZED', response_code: -1 })).toBe(false)
+    expect(pagoWebpayAprobado(null)).toBe(false)
   })
 })

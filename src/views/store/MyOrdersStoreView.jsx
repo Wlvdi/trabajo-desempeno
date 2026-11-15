@@ -14,11 +14,11 @@ import {
 } from 'lucide-react'
 import { fetchMisOrdenes } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { nombreMedioPago } from '../../services/compraWebpay'
 
 const ORDENES_POR_PAGINA = 10
 
 /** Texto del medio de pago guardado en la orden. */
-const nombreMedioPago = (medio) => (medio === 'mock' ? 'Pago simulado' : medio || 'Sin informar')
 
 export default function MyOrdersStoreView() {
   const { currentUser, openAuthModal } = useAuth()

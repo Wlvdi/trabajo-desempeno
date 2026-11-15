@@ -63,6 +63,25 @@ function leerPagoMock(valor, entorno) {
 }
 
 /**
+ * Lee URL_PUBLICA: dirección con que el navegador abre la tienda (sin "/"
+ * final). Webpay devuelve al comprador a URL_PUBLICA/api/pagos/webpay/retorno
+ * y la API lo redirige a URL_PUBLICA/orden/:id. Por defecto, el Vite local.
+ * @param {string | undefined} valor
+ * @returns {string}
+ */
+function leerUrlPublica(valor) {
+  const texto = valor?.trim() || 'http://localhost:5173'
+  let url
+  try {
+    url = new URL(texto)
+  } catch {
+    throw new Error('URL_PUBLICA debe ser una URL http(s) válida')
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('URL_PUBLICA debe ser http o https')
+  return url.origin + url.pathname.replace(/\/+$/, '')
+}
+
+/**
  * Construye la configuración a partir de un objeto de entorno.
  * Es una función pura para poder probarla sin reiniciar el proceso.
  * @param {Record<string, string | undefined>} env
@@ -91,7 +110,9 @@ export function leerConfig(env) {
       parallelism: entero(env.ARGON2_PARALELISMO, undefined)
     }),
     // Habilita medio_pago "mock" en el checkout (aprobación simulada).
-    pagoMock: leerPagoMock(env.PAGO_MOCK, entorno)
+    pagoMock: leerPagoMock(env.PAGO_MOCK, entorno),
+    // Dirección pública de la tienda (retorno desde Webpay).
+    urlPublica: leerUrlPublica(env.URL_PUBLICA)
   })
 }
 

@@ -23,14 +23,31 @@
  *  5. Calcular neto con precios ACTUALES, envío y total; autorizar el pago.
  *  6. Insertar ventas y detalle_ventas (un INSERT de varias filas; los
  *     triggers descuentan stock y auditan VENTA_SALIDA) y vaciar el carrito.
+ *
+ * Con medio_pago "webpay" (sandbox de Transbank) cambia:
+ *  - Antes del paso 3 se anulan las ventas PENDIENTE que dejó este mismo
+ *    carrito (el comprador cerró Webpay sin volver): recuperan su stock.
+ *  - La venta queda PENDIENTE (stock reservado) y el carrito NO se vacía.
+ *  - DESPUÉS del COMMIT (sin ocupar una conexión del pool mientras se espera
+ *    a Transbank) se crea la transacción en Webpay y se responde con
+ *    pago: { url, token }; el navegador envía token_ws a esa url.
+ *  - El pago se cierra en rutas/pagos.js cuando Webpay devuelve al comprador.
  */
 import { Router } from 'express'
 import { autenticarOpcional } from '../middlewares/auth.js'
 import { ErrorHttp } from '../middlewares/errores.js'
 import { enTransaccion } from '../db/transaccion.js'
 import { buscarCarritoAnonimo, buscarCarritoDeUsuario, vaciarCarrito } from '../consultas/carrito.js'
-import { bloquearLineasDelCarrito, insertarDetalle, insertarVenta, leerOrden } from '../consultas/ordenes.js'
-import { MEDIOS_PAGO, autorizarPagoMock, costoEnvio, exigirMedioDisponible } from '../pagos.js'
+import {
+  anularPendientesDelCarrito,
+  bloquearLineasDelCarrito,
+  cerrarVentaPendiente,
+  guardarTokenPago,
+  insertarDetalle,
+  insertarVenta,
+  leerOrden
+} from '../consultas/ordenes.js'
+import { MEDIOS_PAGO, autorizarPagoMock, costoEnvio, crearClienteWebpay, exigirMedioDisponible } from '../pagos.js'
 import { ErrorValidacion, campoEmail, campoTexto, cuerpoObjeto, uuidOpcional } from '../validacion.js'
 import { config } from '../config.js'
 
@@ -98,14 +115,23 @@ function resultadoCompra(err) {
 /** Monto en pesos a centavos enteros (evita errores de punto flotante). */
 const aCentavos = (monto) => Math.round(monto * 100)
 
+/** Ruta (bajo URL_PUBLICA) a la que Webpay devuelve al comprador; ver rutas/pagos.js. */
+export const RUTA_RETORNO_WEBPAY = '/api/pagos/webpay/retorno'
+
 /**
  * @param {import('pg').Pool} pool
- * @param {{ pagoMock?: boolean, metricas?: import('../metricas.js').Metricas }} [opciones]
+ * @param {{ pagoMock?: boolean, metricas?: import('../metricas.js').Metricas,
+ *   webpay?: import('../pagos.js').ClienteWebpay, urlPublica?: string }} [opciones]
  *   pagoMock: por defecto, config.pagoMock
  *   metricas: cuenta cada intento de compra por resultado (api_compras_total)
+ *   webpay: cliente de Webpay (los tests entregan uno falso)
+ *   urlPublica: por defecto, config.urlPublica
  * @returns {import('express').Router}
  */
-export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {}) {
+export function rutasCheckout(
+  pool,
+  { pagoMock = config.pagoMock, metricas, webpay = crearClienteWebpay(), urlPublica = config.urlPublica } = {}
+) {
   const router = Router()
 
   router.post('/', autenticarOpcional, async (req, res) => {
@@ -124,6 +150,7 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
         let carritoId = null
         if (!invitado) carritoId = await buscarCarritoDeUsuario(db, usuarioId, { bloquear: true })
         else if (idCarritoAnonimo) carritoId = await buscarCarritoAnonimo(db, idCarritoAnonimo, { bloquear: true })
+        if (carritoId && medioPago === 'webpay') await anularPendientesDelCarrito(db, carritoId)
         const lineas = carritoId ? await bloquearLineasDelCarrito(db, carritoId) : []
         if (lineas.length === 0) throw new ErrorHttp(400, 'El carrito está vacío')
 
@@ -150,17 +177,19 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
         const envio = costoEnvio(neto)
         const total = (aCentavos(neto) + aCentavos(envio)) / 100
 
-        const pago = autorizarPagoMock(total)
-
+        // Pago simulado: se aprueba aquí mismo. Webpay: queda PENDIENTE hasta el retorno.
+        const conWebpay = medioPago === 'webpay'
         const venta = await insertarVenta(db, {
           usuarioId,
           clienteEmail: email ?? undefined,
           medioPago,
-          codigoAutorizacion: pago.codigo_autorizacion,
+          codigoAutorizacion: conWebpay ? null : autorizarPagoMock(total).codigo_autorizacion,
           costoEnvio: envio,
           total,
           despacho,
-          clienteNombre: `${despacho.nombre} ${despacho.apellido}`
+          clienteNombre: `${despacho.nombre} ${despacho.apellido}`,
+          estado: conWebpay ? 'PENDIENTE' : 'PAGADO',
+          carritoId: conWebpay ? carritoId : null
         })
         try {
           await insertarDetalle(db, venta.id, detalle)
@@ -170,7 +199,7 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
           if (err.code === VIOLACION_CHECK) throw new ErrorHttp(409, 'Stock insuficiente para completar la compra')
           throw err
         }
-        await vaciarCarrito(db, carritoId)
+        if (!conWebpay) await vaciarCarrito(db, carritoId)
 
         const orden = await leerOrden(db, venta.id, { usuarioId, token: venta.token_consulta })
         // Solo el invitado recibe el token: con sesión, la orden se ve con el JWT.
@@ -180,6 +209,23 @@ export function rutasCheckout(pool, { pagoMock = config.pagoMock, metricas } = {
       metricas?.compras.inc({ resultado: resultadoCompra(err) })
       throw err
     }
+
+    if (medioPago === 'webpay') {
+      // La compra se cuenta como "ok" recién cuando Webpay aprueba (rutas/pagos.js).
+      let transaccion
+      try {
+        transaccion = await webpay.crear(orden.codigo, orden.id, Math.round(orden.total), urlPublica + RUTA_RETORNO_WEBPAY)
+        await guardarTokenPago(pool, orden.id, transaccion.token)
+      } catch (err) {
+        console.error('No se pudo iniciar la transacción en Webpay:', err.message)
+        await cerrarVentaPendiente(pool, orden.id, { aprobado: false }) // devuelve el stock
+        metricas?.compras.inc({ resultado: 'error' })
+        throw new ErrorHttp(502, 'No se pudo iniciar el pago con Webpay. Intenta de nuevo en unos minutos.')
+      }
+      res.status(201).json({ ...orden, pago: { url: transaccion.url, token: transaccion.token } })
+      return
+    }
+
     metricas?.compras.inc({ resultado: 'ok' })
     res.status(201).json(orden)
   })

@@ -60,7 +60,7 @@ const stockDe = async (id) => (await pool.query('select stock_actual from produc
 describe('Migraciones', () => {
   it('registra las migraciones aplicadas', async () => {
     const { rows } = await pool.query('select nombre from schema_migraciones order by nombre')
-    expect(rows.map((r) => r.nombre)).toEqual(['001_esquema_base.sql', '002_tienda.sql', '003_checkout.sql', '004_checkout_invitado.sql'])
+    expect(rows.map((r) => r.nombre)).toEqual(['001_esquema_base.sql', '002_tienda.sql', '003_checkout.sql', '004_checkout_invitado.sql', '005_webpay.sql'])
   })
 
   it('no vuelve a aplicar migraciones ya aplicadas', async () => {

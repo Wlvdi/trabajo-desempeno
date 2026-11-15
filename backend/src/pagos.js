@@ -1,12 +1,19 @@
 /**
  * Reglas de cobro del checkout: costo de envío y autorización del pago.
  *
- * El único medio implementado es "mock" (aprobación simulada, sin llamar a
- * servicios externos). Motivo (guía, sección 5.3): bajo carga nunca se debe
- * llamar al sandbox de un tercero. "webpay" (Transbank) será otro commit.
+ * Dos medios de pago:
+ * - "mock": aprobación simulada dentro de la API, sin servicios externos. Lo
+ *   usan las pruebas de carga (guía, sección 5.3: bajo carga nunca se debe
+ *   llamar al sandbox de un tercero). Se habilita con PAGO_MOCK.
+ * - "webpay": Webpay Plus de Transbank en ambiente de INTEGRACIÓN (sandbox
+ *   con las credenciales públicas de prueba y tarjetas de prueba). Nunca se
+ *   conecta al ambiente de producción ni cobra dinero real.
  */
 import { randomInt } from 'node:crypto'
+import transbank from 'transbank-sdk'
 import { ErrorHttp } from './middlewares/errores.js'
+
+const { WebpayPlus, Options, IntegrationApiKeys, IntegrationCommerceCodes, Environment } = transbank
 
 /**
  * Neto (en pesos) desde el cual el envío es gratis.
@@ -35,9 +42,6 @@ export function costoEnvio(neto) {
  * @param {{ pagoMock: boolean }} opciones
  */
 export function exigirMedioDisponible(medio, { pagoMock }) {
-  if (medio === 'webpay') {
-    throw new ErrorHttp(501, 'El pago con Webpay no está implementado aún; usa medio_pago "mock"')
-  }
   if (medio === 'mock' && !pagoMock) {
     throw new ErrorHttp(400, 'El pago simulado (medio_pago "mock") está deshabilitado en este servidor (PAGO_MOCK=false)')
   }
@@ -50,4 +54,43 @@ export function exigirMedioDisponible(medio, { pagoMock }) {
  */
 export function autorizarPagoMock(_total) {
   return { aprobado: true, codigo_autorizacion: `MOCK-${String(randomInt(0, 1_000_000)).padStart(6, '0')}` }
+}
+
+/**
+ * @typedef {object} ClienteWebpay
+ * @property {(ordenCompra: string, sesion: string, monto: number, urlRetorno: string) =>
+ *   Promise<{ token: string, url: string }>} crear inicia la transacción
+ * @property {(token: string) => Promise<RespuestaWebpay>} confirmar confirma (commit) al volver el comprador
+ */
+
+/**
+ * @typedef {object} RespuestaWebpay respuesta del commit de Webpay Plus
+ * @property {string} status AUTHORIZED, FAILED, ...
+ * @property {number} response_code 0 = aprobada
+ * @property {string} [authorization_code]
+ * @property {number} amount
+ * @property {string} buy_order
+ */
+
+/**
+ * Cliente de Webpay Plus en ambiente de integración (sandbox). El código de
+ * comercio y la llave son los públicos de prueba que trae el SDK oficial.
+ * @returns {ClienteWebpay}
+ */
+export function crearClienteWebpay() {
+  const transaccion = new WebpayPlus.Transaction(
+    new Options(IntegrationCommerceCodes.WEBPAY_PLUS, IntegrationApiKeys.WEBPAY, Environment.Integration)
+  )
+  return {
+    crear: (ordenCompra, sesion, monto, urlRetorno) => transaccion.create(ordenCompra, sesion, monto, urlRetorno),
+    confirmar: (token) => transaccion.commit(token)
+  }
+}
+
+/**
+ * ¿El commit de Webpay aprobó el pago? (status AUTHORIZED y response_code 0)
+ * @param {Partial<RespuestaWebpay> | null | undefined} respuesta
+ */
+export function pagoWebpayAprobado(respuesta) {
+  return respuesta?.status === 'AUTHORIZED' && respuesta?.response_code === 0
 }

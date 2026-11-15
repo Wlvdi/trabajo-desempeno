@@ -209,13 +209,6 @@ describe('POST /api/checkout: errores', () => {
     expect(await fotografia(pool, [productos[0].id])).toEqual(antes)
   })
 
-  it('webpay → 501 no implementado', async () => {
-    await llenarCarrito(pool, cliente.id, [[productos[0].id, 1]])
-    const res = await comprar({ medio_pago: 'webpay', despacho: DESPACHO })
-    expect(res.status).toBe(501)
-    expect(res.body.error).toMatch(/no está implementado aún/)
-  })
-
   const conDespacho = (cambios) => ({ medio_pago: 'mock', despacho: { ...DESPACHO, ...cambios } })
 
   it.each([

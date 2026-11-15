@@ -1,6 +1,6 @@
 // src/views/store/OrderSuccessStoreView.jsx
 import React, { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import {
   CheckCircle,
   Download,
@@ -12,16 +12,25 @@ import {
   MapPin,
   Calendar,
   Layers,
-  ExternalLink
+  ExternalLink,
+  XCircle,
+  Clock
 } from 'lucide-react'
 import { esOrdenDeInvitado, fetchOrdenById } from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { useCart } from '../../context/CartContext'
+import { trackPurchase } from '../../services/analytics'
+import { nombreMedioPago, tomarCompraWebpayPendiente } from '../../services/compraWebpay'
 
 export default function OrderSuccessStoreView() {
   const { id } = useParams()
   const { currentUser, isAdmin, openAuthModal } = useAuth()
   const [orden, setOrden] = useState(null)
   const [loading, setLoading] = useState(true)
+  // ?pago=aprobado|rechazado|cancelado: la API redirige aquí al volver de Webpay.
+  const [searchParams] = useSearchParams()
+  const resultadoWebpay = searchParams.get('pago')
+  const { recargarCarrito } = useCart()
 
   // Una orden comprada como invitado en este navegador se ve con su token.
   const deInvitado = esOrdenDeInvitado(id)
@@ -38,6 +47,19 @@ export default function OrderSuccessStoreView() {
       .catch(() => setOrden(null))
       .finally(() => setLoading(false))
   }, [id, currentUser?.id, deInvitado])
+
+  // Vuelta desde Webpay: el carrito cambió en el servidor (vacío si se aprobó).
+  useEffect(() => {
+    if (resultadoWebpay) recargarCarrito()
+  }, [resultadoWebpay])
+
+  // GA4: purchase recién con el pago aprobado, una sola vez por orden
+  // (misma función que el pago simulado; ver services/compraWebpay.js).
+  useEffect(() => {
+    if (resultadoWebpay !== 'aprobado' || orden?.estado !== 'PAGADO') return
+    const tipoCliente = tomarCompraWebpayPendiente(orden.id)
+    if (tipoCliente) trackPurchase(orden, { tipoCliente })
+  }, [orden, resultadoWebpay])
 
   const formatCLP = (val) => {
     return new Intl.NumberFormat('es-CL', {
@@ -89,7 +111,40 @@ export default function OrderSuccessStoreView() {
   return (
     <div className="max-w-3xl mx-auto space-y-8 pb-16">
       
+      {/* Pago con Webpay no completado (rechazado, anulado o pendiente) */}
+      {orden.estado !== 'PAGADO' && (
+        <div
+          role="alert"
+          className={`${orden.estado === 'ANULADO' ? 'bg-rose-600' : 'bg-amber-500'} text-white p-8 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center gap-6`}
+        >
+          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center flex-shrink-0">
+            {orden.estado === 'ANULADO' ? <XCircle className="w-10 h-10" /> : <Clock className="w-10 h-10" />}
+          </div>
+          <div className="space-y-2 text-center sm:text-left">
+            <h1 className="text-2xl sm:text-3xl font-black">
+              {orden.estado === 'ANULADO'
+                ? resultadoWebpay === 'cancelado'
+                  ? 'Pago anulado en Webpay'
+                  : 'Pago rechazado por Webpay'
+                : 'Pago pendiente en Webpay'}
+            </h1>
+            <p className="text-xs sm:text-sm text-white/90">
+              {orden.estado === 'ANULADO'
+                ? 'No se realizó ningún cobro y la orden quedó anulada. Tus productos siguen en el carrito para intentarlo de nuevo.'
+                : 'Todavía no recibimos la confirmación de Webpay para esta orden.'}
+            </p>
+            <Link
+              to="/checkout"
+              className="inline-block px-4 py-2 bg-white text-slate-900 text-xs font-bold rounded-xl print:hidden"
+            >
+              Volver al checkout
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Banner de Confirmación */}
+      {orden.estado === 'PAGADO' && (
       <div className="bg-emerald-600 text-white p-8 rounded-3xl shadow-xl flex flex-col sm:flex-row items-center gap-6">
         <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0">
           <CheckCircle className="w-10 h-10 text-white" />
@@ -99,13 +154,14 @@ export default function OrderSuccessStoreView() {
             Transacción Exitosa
           </span>
           <h1 className="text-2xl sm:text-3xl font-black">
-            ¡Compra registrada con pago simulado!
+            {orden.medio_pago === 'webpay' ? '¡Pago aprobado por Webpay!' : '¡Compra registrada con pago simulado!'}
           </h1>
           <p className="text-xs sm:text-sm text-emerald-100">
             Tu compra ha sido procesada correctamente y el stock en bodega ya fue actualizado.
           </p>
         </div>
       </div>
+      )}
 
       {!currentUser && deInvitado && (
         <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-900 text-xs print:hidden">
@@ -127,16 +183,18 @@ export default function OrderSuccessStoreView() {
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Comprobante de compra (pago simulado, entorno de pruebas)
+              Comprobante de compra ({orden.medio_pago === 'webpay' ? 'Webpay Plus, ambiente de pruebas de Transbank' : 'pago simulado, entorno de pruebas'})
             </p>
           </div>
 
           <div className="text-left sm:text-right text-xs space-y-1">
             <p className="font-bold text-slate-900">Orden de Compra: <span className="font-mono text-indigo-600">{orden.codigo}</span></p>
             <p className="text-slate-500">Fecha: {new Date(orden.fecha).toLocaleString('es-CL')}</p>
-            <p className="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg inline-block">
-              Código Autorización: {orden.codigo_autorizacion}
-            </p>
+            {orden.codigo_autorizacion && (
+              <p className="text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg inline-block">
+                Código Autorización: {orden.codigo_autorizacion}
+              </p>
+            )}
           </div>
         </div>
 
@@ -157,7 +215,7 @@ export default function OrderSuccessStoreView() {
             </span>
             <p className="font-bold text-slate-800">{orden.despacho?.direccion} {orden.despacho?.depto && `(${orden.despacho.depto})`}</p>
             <p className="text-slate-500">{orden.despacho?.comuna}, {orden.despacho?.region}</p>
-            <p className="text-slate-500">Método de Pago: <strong className="text-slate-800">{orden.medio_pago === 'mock' ? 'Pago simulado' : orden.medio_pago}</strong></p>
+            <p className="text-slate-500">Método de Pago: <strong className="text-slate-800">{nombreMedioPago(orden.medio_pago)}</strong></p>
           </div>
         </div>
 
@@ -213,7 +271,7 @@ export default function OrderSuccessStoreView() {
               </span>
             </div>
             <div className="flex justify-between text-base font-black text-slate-900 pt-2 border-t border-slate-200">
-              <span>Total Pagado:</span>
+              <span>{orden.estado === 'PAGADO' ? 'Total Pagado:' : 'Total:'}</span>
               <span className="text-indigo-600 text-lg">{formatCLP(orden.total)}</span>
             </div>
             <p className="text-[10px] text-slate-400 text-right">IVA del 19% incluido</p>

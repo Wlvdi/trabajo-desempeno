@@ -100,7 +100,7 @@ export function crearMetricas({ pool, predeterminadas = true } = {}) {
 
   const compras = new client.Counter({
     name: 'api_compras_total',
-    help: 'Intentos de checkout por resultado (ok, sin_stock, carrito_vacio, error)',
+    help: 'Intentos de checkout por resultado (ok, sin_stock, carrito_vacio, error, pago_rechazado)',
     labelNames: ['resultado'],
     registers: [registro]
   })
@@ -132,7 +132,7 @@ export function crearMetricas({ pool, predeterminadas = true } = {}) {
 
   // Series en 0 desde el inicio: los gráficos de tasa no quedan vacíos.
   for (const resultado of ['ok', 'fallido']) logins.inc({ resultado }, 0)
-  for (const resultado of ['ok', 'sin_stock', 'carrito_vacio', 'error']) compras.inc({ resultado }, 0)
+  for (const resultado of ['ok', 'sin_stock', 'carrito_vacio', 'error', 'pago_rechazado']) compras.inc({ resultado }, 0)
 
   /**
    * Middleware que mide cada petición. Debe registrarse antes de las rutas.

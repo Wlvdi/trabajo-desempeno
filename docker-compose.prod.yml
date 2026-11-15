@@ -13,6 +13,8 @@ services:
       # Para `docker compose exec api npm run seed` (usuarios de prueba).
       SEED_CONTRASENA_CLIENTES: ${SEED_CONTRASENA_CLIENTES:-}
       SEED_CONTRASENA_ADMIN: ${SEED_CONTRASENA_ADMIN:-}
+      # Retorno desde Webpay (sandbox) a la tienda publicada.
+      URL_PUBLICA: https://${DOMINIO}
 
   web:
     build:

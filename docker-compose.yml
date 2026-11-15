@@ -57,6 +57,8 @@ services:
       # Pago simulado en el checkout (medio_pago "mock"). Deshabilitado por defecto;
       # en local y para las pruebas de carga se habilita con PAGO_MOCK=true en .env.
       PAGO_MOCK: ${PAGO_MOCK:-false}
+      # Dirección pública de la tienda: Webpay (sandbox) devuelve aquí al comprador.
+      URL_PUBLICA: ${URL_PUBLICA:-http://localhost:5173}
     ports:
       - "${API_PUERTO_HOST:-3000}:3000"
 

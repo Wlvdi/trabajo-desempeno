@@ -1,6 +1,6 @@
 // src/views/store/CheckoutStoreView.jsx
 import React, { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import {
   CreditCard,
   ShieldCheck,
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { useCart } from '../../context/CartContext'
 import { useAuth } from '../../context/AuthContext'
-import { fetchUltimoDespacho, procesarOrdenWeb } from '../../services/api'
+import { fetchUltimoDespacho, irAWebpay, procesarOrdenWeb } from '../../services/api'
 import {
   trackAddPaymentInfo,
   trackAddShippingInfo,
@@ -28,6 +28,7 @@ import {
   trackPurchase
 } from '../../services/analytics'
 import PagoSimuladoModal from '../../components/store/PagoSimuladoModal'
+import { marcarCompraWebpayPendiente } from '../../services/compraWebpay'
 
 // Regiones y Comunas de Chile para el checkout
 const REGIONES_CHILE = [
@@ -74,9 +75,15 @@ export default function CheckoutStoreView() {
   const direccionEditada = useRef(false)
   const [autocompletado, setAutocompletado] = useState(false)
 
-  // Pago simulado
+  // Medio de pago: "mock" (pago simulado, el de las pruebas de carga) o
+  // "webpay" (Webpay Plus en ambiente de integración de Transbank).
+  const [medioPago, setMedioPago] = useState('mock')
   const [isPagoOpen, setIsPagoOpen] = useState(false)
-  const [errorCheckout, setErrorCheckout] = useState(null)
+  // ?pago=error: Webpay devolvió al comprador sin una venta reconocible.
+  const [searchParams] = useSearchParams()
+  const [errorCheckout, setErrorCheckout] = useState(() =>
+    searchParams.get('pago') === 'error' ? 'No se pudo completar el pago con Webpay. Tu carrito sigue disponible.' : null
+  )
   /** Productos sin stock suficiente (409): [{ producto_id, nombre, solicitado, disponible }] */
   const [faltantes, setFaltantes] = useState(null)
   const [procesandoFinal, setProcesandoFinal] = useState(false)
@@ -153,45 +160,66 @@ export default function CheckoutStoreView() {
     // GA4: datos de despacho confirmados y medio de pago elegido.
     trackAddShippingInfo(items, total, costoEnvio)
     trackAddPaymentInfo(items, total)
-    setIsPagoOpen(true)
+    if (medioPago === 'webpay') handlePagarConWebpay()
+    else setIsPagoOpen(true)
   }
+
+  // Datos de despacho que valida POST /api/checkout.
+  const datosDespacho = () => ({
+    nombre: nombre.trim(),
+    apellido: apellido.trim(),
+    telefono: telefono.trim(),
+    region,
+    comuna,
+    direccion: direccion.trim(),
+    ...(depto.trim() ? { depto: depto.trim() } : {}),
+    // Solo el invitado envía el correo; con cuenta se usa el de la cuenta.
+    ...(currentUser ? {} : { email: emailInvitado.trim() })
+  })
+  const tipoCliente = currentUser ? 'registrado' : 'invitado'
 
   // Confirmación del pago simulado: POST /api/checkout con medio_pago "mock".
   const handleConfirmarPago = async () => {
     setProcesandoFinal(true)
     try {
-      const orden = await procesarOrdenWeb({
-        despacho: {
-          nombre: nombre.trim(),
-          apellido: apellido.trim(),
-          telefono: telefono.trim(),
-          region,
-          comuna,
-          direccion: direccion.trim(),
-          ...(depto.trim() ? { depto: depto.trim() } : {}),
-          // Solo el invitado envía el correo; con cuenta se usa el de la cuenta.
-          ...(currentUser ? {} : { email: emailInvitado.trim() })
-        }
-      })
+      const orden = await procesarOrdenWeb({ despacho: datosDespacho() })
 
       // Evento GA4 de compra exitosa
-      trackPurchase(orden, { tipoCliente: currentUser ? 'registrado' : 'invitado' })
+      trackPurchase(orden, { tipoCliente })
 
       setIsPagoOpen(false)
       await recargarCarrito() // la API ya vació el carrito
       navigate(`/orden/${orden.id}`)
     } catch (err) {
-      setIsPagoOpen(false)
-      setProcesandoFinal(false)
-      if (err.status === 409 && Array.isArray(err.detalle?.productos)) {
-        setFaltantes(err.detalle.productos)
-        setErrorCheckout('Algunos productos ya no tienen stock suficiente. Ajusta tu carrito para continuar.')
-        recargarCarrito()
-      } else if (err.status === 401) {
-        setErrorCheckout('Tu sesión expiró. Inicia sesión de nuevo o continúa como invitado.')
-      } else {
-        setErrorCheckout(err.message || 'No se pudo completar la compra.')
-      }
+      manejarErrorCheckout(err)
+    }
+  }
+
+  // Webpay (sandbox): la API deja la orden PENDIENTE y el navegador se va a
+  // Webpay. El evento purchase se envía al volver con el pago aprobado
+  // (OrderSuccessStoreView), con la misma función trackPurchase.
+  const handlePagarConWebpay = async () => {
+    setProcesandoFinal(true)
+    try {
+      const orden = await procesarOrdenWeb({ despacho: datosDespacho(), medioPago: 'webpay' })
+      marcarCompraWebpayPendiente(orden.id, tipoCliente)
+      irAWebpay(orden.pago)
+    } catch (err) {
+      manejarErrorCheckout(err)
+    }
+  }
+
+  const manejarErrorCheckout = (err) => {
+    setIsPagoOpen(false)
+    setProcesandoFinal(false)
+    if (err.status === 409 && Array.isArray(err.detalle?.productos)) {
+      setFaltantes(err.detalle.productos)
+      setErrorCheckout('Algunos productos ya no tienen stock suficiente. Ajusta tu carrito para continuar.')
+      recargarCarrito()
+    } else if (err.status === 401) {
+      setErrorCheckout('Tu sesión expiró. Inicia sesión de nuevo o continúa como invitado.')
+    } else {
+      setErrorCheckout(err.message || 'No se pudo completar la compra.')
     }
   }
 
@@ -223,7 +251,7 @@ export default function CheckoutStoreView() {
           Checkout y Despacho Seguro
         </h1>
         <p className="text-xs text-slate-500 mt-0.5">
-          Ingresa tus datos de envío en Chile y confirma la compra con el pago simulado (entorno de pruebas).
+          Ingresa tus datos de envío en Chile y paga con el pago simulado o con Webpay en ambiente de pruebas.
         </p>
       </div>
 
@@ -442,16 +470,38 @@ export default function CheckoutStoreView() {
               3. Medio de Pago
             </h3>
 
-            <div className="flex items-start gap-4 p-4 rounded-2xl border-2 border-indigo-600 bg-indigo-50/40">
-              <input type="radio" name="metodoPago" value="mock" checked readOnly className="mt-1 accent-indigo-600" />
-              <div className="flex-1">
-                <span className="font-extrabold text-xs sm:text-sm text-slate-900">Pago simulado (entorno de pruebas)</span>
-                <p className="text-xs text-slate-500 mt-1">
-                  No se conecta con ningún banco ni pasarela de pago y no se cobra dinero. La integración con un medio de
-                  pago real se agregará más adelante.
-                </p>
-              </div>
-            </div>
+            {[
+              {
+                valor: 'mock',
+                titulo: 'Pago simulado (entorno de pruebas)',
+                texto: 'Se aprueba al instante, sin conectarse con ningún banco ni pasarela de pago. Es el que usan las pruebas de carga del proyecto.'
+              },
+              {
+                valor: 'webpay',
+                titulo: 'Webpay Plus (ambiente de integración de Transbank)',
+                texto: 'Te lleva al formulario de pruebas de Webpay. Paga con una tarjeta de prueba de Transbank: no se cobra dinero real.'
+              }
+            ].map((opcion) => (
+              <label
+                key={opcion.valor}
+                className={`flex items-start gap-4 p-4 rounded-2xl border-2 cursor-pointer transition ${
+                  medioPago === opcion.valor ? 'border-indigo-600 bg-indigo-50/40' : 'border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="metodoPago"
+                  value={opcion.valor}
+                  checked={medioPago === opcion.valor}
+                  onChange={() => setMedioPago(opcion.valor)}
+                  className="mt-1 accent-indigo-600"
+                />
+                <div className="flex-1">
+                  <span className="font-extrabold text-xs sm:text-sm text-slate-900">{opcion.titulo}</span>
+                  <p className="text-xs text-slate-500 mt-1">{opcion.texto}</p>
+                </div>
+              </label>
+            ))}
           </div>
 
         </div>
@@ -506,11 +556,11 @@ export default function CheckoutStoreView() {
               className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl text-xs sm:text-sm font-extrabold shadow-lg shadow-indigo-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {procesandoFinal ? (
-                <span>Registrando la compra...</span>
+                <span>{medioPago === 'webpay' ? 'Conectando con Webpay...' : 'Registrando la compra...'}</span>
               ) : (
                 <>
                   <Lock className="w-4 h-4" />
-                  <span>Continuar al pago simulado</span>
+                  <span>{medioPago === 'webpay' ? 'Pagar con Webpay (pruebas)' : 'Continuar al pago simulado'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}

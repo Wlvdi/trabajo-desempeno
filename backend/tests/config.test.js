@@ -68,3 +68,15 @@ describe('leerConfig: PAGO_MOCK', () => {
     expect(() => leerConfig({ PAGO_MOCK: 'si' })).toThrow(/PAGO_MOCK debe ser true o false/)
   })
 })
+
+describe('leerConfig: URL_PUBLICA', () => {
+  it('por defecto el Vite local; quita la "/" final', () => {
+    expect(leerConfig({}).urlPublica).toBe('http://localhost:5173')
+    expect(leerConfig({ URL_PUBLICA: 'https://tienda.example.cl/' }).urlPublica).toBe('https://tienda.example.cl')
+  })
+
+  it('una URL inválida o sin http(s) impide arrancar', () => {
+    expect(() => leerConfig({ URL_PUBLICA: 'tienda' })).toThrow(/URL_PUBLICA/)
+    expect(() => leerConfig({ URL_PUBLICA: 'ftp://tienda.cl' })).toThrow(/URL_PUBLICA/)
+  })
+})

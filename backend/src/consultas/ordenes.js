@@ -46,20 +46,24 @@ export async function bloquearLineasDelCarrito(db, carritoId) {
  * - Con sesión (usuarioId): cliente_id y usuario_id = el usuario, y el email
  *   de contacto es el de su cuenta.
  * - Como invitado (usuarioId null): sin cliente_id y con clienteEmail.
+ * - estado: PAGADO (pago simulado) o PENDIENTE (Webpay, con carritoId para
+ *   vaciar el carrito cuando se apruebe el pago).
  * @param {Consultable} db
- * @param {{ usuarioId: string | null, clienteEmail?: string, medioPago: string, codigoAutorizacion: string,
- *   costoEnvio: number, total: number, despacho: Record<string, string>, clienteNombre: string }} venta
- * @returns {Promise<{ id: string, token_consulta: string }>}
+ * @param {{ usuarioId: string | null, clienteEmail?: string, medioPago: string, codigoAutorizacion: string | null,
+ *   costoEnvio: number, total: number, despacho: Record<string, string>, clienteNombre: string,
+ *   estado?: 'PAGADO' | 'PENDIENTE', carritoId?: string | null }} venta
+ * @returns {Promise<{ id: string, codigo: string, token_consulta: string }>}
  */
 export async function insertarVenta(db, venta) {
   const { rows } = await db.query(
     `insert into ventas (codigo, canal_venta, estado, medio_pago, codigo_autorizacion,
-                         costo_envio, total, despacho, cliente_id, usuario_id, cliente_nombre, cliente_email)
+                         costo_envio, total, despacho, cliente_id, usuario_id, cliente_nombre, cliente_email,
+                         carrito_id)
      values ('SUB-' || to_char(now() at time zone 'America/Santiago', 'YYYY') || '-'
                || lpad(nextval('seq_codigo_venta')::text, 6, '0'),
-             'Web', 'PAGADO', $1, $2, $3, $4, $5, $6, $6, $7,
-             coalesce($8, (select email from usuarios where id = $6)))
-     returning id, token_consulta`,
+             'Web', $9, $1, $2, $3, $4, $5, $6, $6, $7,
+             coalesce($8, (select email from usuarios where id = $6)), $10)
+     returning id, codigo, token_consulta`,
     [
       venta.medioPago,
       venta.codigoAutorizacion,
@@ -68,7 +72,9 @@ export async function insertarVenta(db, venta) {
       JSON.stringify(venta.despacho),
       venta.usuarioId,
       venta.clienteNombre,
-      venta.clienteEmail ?? null
+      venta.clienteEmail ?? null,
+      venta.estado ?? 'PAGADO',
+      venta.carritoId ?? null
     ]
   )
   return rows[0]
@@ -153,4 +159,75 @@ export async function listarOrdenes(pool, { usuarioId, pagina, limite }) {
   ])
   const total = conteo.rows[0].total
   return { items: pagin.rows, total, pagina, limite, totalPaginas: Math.ceil(total / limite) }
+}
+
+// -----------------------------------------------------------------------------
+// Webpay: ventas PENDIENTE
+// -----------------------------------------------------------------------------
+
+/**
+ * Anula las ventas Webpay que quedaron PENDIENTE desde este carrito (el
+ * comprador cerró Webpay sin volver y ahora intenta de nuevo). El trigger
+ * trg_anular_venta devuelve su stock antes de validar el nuevo checkout.
+ * @param {Consultable} db
+ * @param {string} carritoId
+ * @returns {Promise<number>} ventas anuladas
+ */
+export async function anularPendientesDelCarrito(db, carritoId) {
+  const { rowCount } = await db.query(
+    `update ventas set estado = 'ANULADO' where carrito_id = $1 and estado = 'PENDIENTE'`,
+    [carritoId]
+  )
+  return rowCount ?? 0
+}
+
+/**
+ * Guarda el token de Webpay de una venta PENDIENTE.
+ * @param {Consultable} db
+ * @param {string} ventaId
+ * @param {string} token
+ */
+export async function guardarTokenPago(db, ventaId, token) {
+  await db.query(`update ventas set pago_token = $2 where id = $1`, [ventaId, token])
+}
+
+/**
+ * Venta Webpay por su token, o por su código (orden de compra en Webpay)
+ * JUNTO con su id (id de sesión en Webpay). Exigir ambos evita que alguien
+ * anule una venta ajena adivinando el código, que es correlativo.
+ * Con `bloquear`, la bloquea (FOR UPDATE) para cerrar el pago una sola vez.
+ * @param {Consultable} db
+ * @param {{ token?: string | null, codigo?: string | null, id?: string | null }} clave
+ * @param {{ bloquear?: boolean }} [opciones]
+ * @returns {Promise<{ id: string, codigo: string, estado: string, total: number, carrito_id: string | null,
+ *   pago_token: string | null } | null>}
+ */
+export async function buscarVentaWebpay(db, { token = null, codigo = null, id = null }, { bloquear = false } = {}) {
+  const { rows } = await db.query(
+    `select id, codigo, estado, total::float8 as total, carrito_id, pago_token
+       from ventas
+      where medio_pago = 'webpay' and (pago_token = $1 or (codigo = $2 and id = $3::uuid))
+      limit 1${bloquear ? ' for update' : ''}`,
+    [token, codigo, id]
+  )
+  return rows[0] ?? null
+}
+
+/**
+ * Cierra una venta PENDIENTE: PAGADO (con el código de autorización) o
+ * ANULADO (el trigger devuelve el stock). Si ya no estaba PENDIENTE no hace
+ * nada y devuelve false (otro retorno ya la cerró).
+ * @param {Consultable} db
+ * @param {string} ventaId
+ * @param {{ aprobado: boolean, codigoAutorizacion?: string | null }} resultado
+ * @returns {Promise<boolean>}
+ */
+export async function cerrarVentaPendiente(db, ventaId, { aprobado, codigoAutorizacion = null }) {
+  const { rowCount } = await db.query(
+    `update ventas
+        set estado = $2, codigo_autorizacion = coalesce($3, codigo_autorizacion)
+      where id = $1 and estado = 'PENDIENTE'`,
+    [ventaId, aprobado ? 'PAGADO' : 'ANULADO', codigoAutorizacion]
+  )
+  return rowCount === 1
 }

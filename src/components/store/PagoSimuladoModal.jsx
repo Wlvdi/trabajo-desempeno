@@ -4,7 +4,8 @@
 // al confirmar, el checkout envía medio_pago "mock" a la API, que aprueba la
 // compra y genera un código de autorización MOCK-NNNNNN.
 // Motivo (guía, sección 5.3): bajo carga nunca se debe llamar al sandbox de
-// un tercero. La integración real con Webpay será otro commit.
+// un tercero. El otro medio de pago del checkout, Webpay Plus en ambiente de
+// integración, no pasa por este modal (CheckoutStoreView → irAWebpay).
 // No pide datos de tarjeta: en un pago simulado no hay nada que cobrar.
 import React from 'react'
 import { AlertTriangle, CheckCircle2, FlaskConical, RotateCcw, X } from 'lucide-react'

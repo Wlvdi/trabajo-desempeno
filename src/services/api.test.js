@@ -114,6 +114,13 @@ describe('Cabeceras', () => {
     expect(cabeceras['Content-Type']).toBe('application/json')
     expect(JSON.parse(opciones.body)).toEqual({ medio_pago: 'mock', despacho: { nombre: 'Ana' } })
   })
+
+  it('con medioPago "webpay" lo envía en el cuerpo', async () => {
+    const f = simularFetch({ status: 201, cuerpo: { id: 'o-2', pago: { url: 'https://webpay', token: 't' } } })
+    const orden = await procesarOrdenWeb({ despacho: { nombre: 'Ana' }, medioPago: 'webpay' })
+    expect(JSON.parse(llamada(f).opciones.body)).toEqual({ medio_pago: 'webpay', despacho: { nombre: 'Ana' } })
+    expect(orden.pago).toEqual({ url: 'https://webpay', token: 't' })
+  })
 })
 
 describe('Carrito anónimo', () => {
