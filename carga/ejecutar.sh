@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Ejecuta un escenario de carga siguiendo el protocolo de la guía (sección 6.3.1)
-# y guarda todos los resultados en carga/resultados/AAAA-MM-DD/.
+# y guarda todos los resultados en carga/resultados/<ESCENARIO>/ (una carpeta por escenario).
 #
 # Uso:
 #   carga/ejecutar.sh <humo|piloto|baja|normal|estres>
@@ -18,7 +18,7 @@
 #   SSH_CLAVE            clave SSH (por defecto ~/.ssh/vm-subligol_key.pem)
 #   + cualquier variable de escenarios.js (ESTRES_ESCALONES, MAX_VUS, CALENTAMIENTO...)
 #
-# Archivos generados (PREFIJO = carga/resultados/AAAA-MM-DD/<escenario>_<HHMM>):
+# Archivos generados (PREFIJO = carga/resultados/<ESCENARIO>/<escenario>_<AAAA-MM-DD>_<HHMM>):
 #   PREFIJO.meta.json        commit, horas de inicio y fin, configuración y generador
 #   PREFIJO.html             reporte web de k6 (gráficos)
 #   PREFIJO.resumen.json     resumen con percentiles por página y umbrales
@@ -45,8 +45,9 @@ ES_LOCAL=0; [[ "$HOST" == "localhost" || "$HOST" == "127.0.0.1" ]] && ES_LOCAL=1
 
 FECHA="$(TZ=America/Santiago date +%F)"
 HORA="$(TZ=America/Santiago date +%H%M)"
-DIR="carga/resultados/$FECHA"
-PREFIJO="$DIR/${ESCENARIO}_${HORA}"
+# Una carpeta por escenario (HUMO, PILOTO, BAJA, NORMAL, ESTRES); la fecha va en el nombre.
+DIR="carga/resultados/${ESCENARIO^^}"
+PREFIJO="$DIR/${ESCENARIO}_${FECHA}_${HORA}"
 mkdir -p "$DIR"
 
 # Duración aproximada de cada escenario (incluye 1 min de calentamiento), para el navegador real.

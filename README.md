@@ -216,9 +216,9 @@ paralelo (`carga/k6/navegador-real.js`) para Web Vitals bajo carga.
 ```bash
 carga/ejecutar.sh humo                                              # verificación
 RESEMBRAR=1 NAVEGADOR=1 PROMETHEUS=1 REPETICION=R1 carga/ejecutar.sh normal
-node carga/tabla-resumen.mjs carga/resultados/AAAA-MM-DD/normal_*.resumen.json
+node carga/tabla-resumen.mjs carga/resultados/NORMAL/normal_*.resumen.json
 ```
-Los resultados quedan en `carga/resultados/AAAA-MM-DD/`. **Guía completa de
+Los resultados quedan en `carga/resultados/<ESCENARIO>/` (HUMO, PILOTO, BAJA, NORMAL, ESTRES). **Guía completa de
 ejecución, dónde ver los resultados y cómo documentarlos en el informe:
 [`carga/README.md`](carga/README.md).** Bitácora: `carga/bitacora.md`.
 

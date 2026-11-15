@@ -17,7 +17,7 @@
 - Base de datos: PostgreSQL 16 en Docker (no Supabase), con
   pg_stat_statements habilitado y postgres-exporter.
 - Infra: docker compose; Prometheus + Grafana + node_exporter + cAdvisor.
-- Carga: k6 (carga/k6). Reportes en carga/resultados/AAAA-MM-DD/.
+- Carga: k6 (carga/k6). Reportes en carga/resultados/<ESCENARIO>/ (HUMO, PILOTO, BAJA, NORMAL, ESTRES).
 
 ## 3. Rol del agente
 Experto en desarrollo web full-stack, analítica web (GA4), pruebas de

@@ -1,0 +1,18 @@
+{
+  "escenario": "baja",
+  "repeticion": "R3",
+  "base_url": "https://subligol-utem.chilecentral.cloudapp.azure.com",
+  "commit": "f4ab914",
+  "inicio": "2026-11-15T01:03:44-03:00",
+  "fin": "2026-11-15T01:11:57-03:00",
+  "umbrales_cumplidos": true,
+  "proporcion_invitado": "0",
+  "navegador_real": "1",
+  "prometheus": "1",
+  "generador": {
+    "equipo": "cachyos-KDEPlasma",
+    "cpus": 6,
+    "memoria": "23Gi",
+    "k6": "v2.4.0"
+  }
+}

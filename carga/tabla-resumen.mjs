@@ -6,8 +6,8 @@
  * fase de medición (excluye el calentamiento).
  *
  * Uso:
- *   node carga/tabla-resumen.mjs carga/resultados/2026-11-20/normal_*.resumen.json
- *   node carga/tabla-resumen.mjs carga/resultados/*\/baja_*.resumen.json > tabla-baja.md
+ *   node carga/tabla-resumen.mjs carga/resultados/NORMAL/normal_*.resumen.json
+ *   node carga/tabla-resumen.mjs carga/resultados/BAJA/baja_*.resumen.json > tabla-baja.md
  */
 import { readFileSync } from 'node:fs'
 import path from 'node:path'

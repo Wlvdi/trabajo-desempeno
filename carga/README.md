@@ -10,8 +10,9 @@ Guía de la **Fase 1.2** (generadores de carga) y base de la **Fase 2**
 | `k6/datos/usuarios.csv` | 200 cuentas de prueba (`test001…test200@ejemplo.cl`), una por usuario virtual |
 | `ejecutar.sh` | Ejecuta un escenario con el protocolo de la guía (6.3.1) y guarda los resultados |
 | `tabla-resumen.mjs` | Convierte los resultados en tablas Markdown para el informe |
+| `tabla-repeticiones.mjs` | Junta las repeticiones (R1, R2, R3) de un escenario: promedio [mín–máx] de cada percentil por página |
 | `bitacora.md` | Bitácora de ejecuciones (tabla 6.2 de la guía) |
-| `resultados/AAAA-MM-DD/` | Resultados de cada ejecución |
+| `resultados/<ESCENARIO>/` | Resultados de cada ejecución, una carpeta por escenario (`HUMO`, `PILOTO`, `BAJA`, `NORMAL`, `ESTRES`); el nombre lleva fecha y hora |
 
 ---
 
@@ -189,9 +190,11 @@ throughput, tasa de error, utilización de recursos y otros signos vitales); y
 | Web Vitals (LCP, INP, CLS, TTFB, FCP) | Experiencia del usuario en el navegador | `navegador.json`, Grafana "Experiencia de usuario", GA4 | TTFB y LCP empeoran con la carga; CLS no debería cambiar |
 
 ### 5.3 Resultados (Fase 2)
-- **Tablas por escenario y por página**: `node carga/tabla-resumen.mjs` sobre
-  las 3 repeticiones; reportar la media de cada percentil y su rango
-  (mínimo–máximo) entre repeticiones (guía 6.4.1).
+- **Tablas por escenario y por página**:
+  `node carga/tabla-repeticiones.mjs carga/resultados/BAJA > carga/resultados/BAJA/RESUMEN.md`
+  junta las 3 repeticiones y reporta la media de cada percentil y su rango
+  (mínimo–máximo), como pide la guía (6.4.1). Para una sola ejecución:
+  `node carga/tabla-resumen.mjs <archivo>.resumen.json`.
 - **Gráficos** (guía 6.4.3), todos en la misma escala de tiempo:
   1. Latencia (mediana, p95, p99) en el tiempo con los VUs o la tasa → reporte
      HTML de k6 o Grafana (paneles de latencia + "Usuarios virtuales").
