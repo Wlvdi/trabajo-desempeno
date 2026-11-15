@@ -970,3 +970,44 @@ RESUMEN DE LO GENERADO:
 COMMIT: 72522de feat(admin): datos de despacho y filtro de pedidos web en ventas
 DEPLOY: no
 ==================================================================
+
+==================================================================
+ID: 0013
+FECHA: 14-11-26 HORA: 23:15 (America/Santiago)
+INTEGRANTE: Wladimir
+AGENTE: Claude Code
+MODELO: Opus 5.5
+------------------------------------------------------------------
+PROMPT (completo):
+Hagamos el deploy. Intenté crear la cuenta en Oracle Cloud pero no
+funcionó; ya tengo Azure for Students y creé la VM con el nombre DNS
+subligol-utem.chilecentral.cloudapp.azure.com. El repositorio es
+público y la clave de la VM está en /mnt/test/Utem/Desempe;o/
+vm-subligol_key.pem. Haz el deploy.
+------------------------------------------------------------------
+RESUMEN DE LO GENERADO:
+- Diseño: producción con docker-compose.yml + docker-compose.prod.yml:
+  servicio web (Caddy 2.10) que compila la tienda con el ID de GA4,
+  sirve HTTPS automático (Let's Encrypt), reenvía /api a la API y sirve
+  la SPA; la API deja de publicar el puerto 3000; PostgreSQL,
+  Prometheus y Grafana solo en 127.0.0.1 (túnel SSH). La imagen de la
+  API incluye migraciones, scripts y seed. Sin correo de ACME (Let's
+  Encrypt ya no envía avisos). Alternativas evaluadas: Oracle (falló el
+  registro), Azure for Students (elegida, sin tarjeta), PC + túnel.
+- Infraestructura: VM Ubuntu 24.04, 2 vCPU, 7,7 GB RAM, Azure Chile
+  Central, puertos 22/80/443. Docker 29.9.3. .env de producción con
+  secretos aleatorios generados en la VM (no salen de ella).
+- Archivos: docker-compose.prod.yml, infra/web/{Dockerfile,Caddyfile},
+  .dockerignore, backend/Dockerfile, backend/seeds/seed.js,
+  .env.example (DOMINIO), README (sección Deploy y URL pública).
+- Instalaciones: Docker en la VM.
+- Tests: backend 371 OK, frontend 85 OK; prueba local del stack de
+  producción con DOMINIO=localhost.
+- Verificación pública: certificado Let's Encrypt válido, HTTP→HTTPS,
+  tienda, SPA, /admin, API (home 40 ms, catálogo 24 ms, búsqueda
+  32 ms), compra como invitado; puertos 3000, 5432, 9090, 3001, 9464,
+  9100 y 8080 cerrados desde Internet; 5 objetivos de Prometheus up.
+COMMIT: 58d7c5d chore(deploy): Caddy con HTTPS y compose de producción para la VM
+        2625189 chore(deploy): Caddy sin correo de ACME obligatorio
+DEPLOY: sí (https://subligol-utem.chilecentral.cloudapp.azure.com, 14-11-26 23:10)
+==================================================================
