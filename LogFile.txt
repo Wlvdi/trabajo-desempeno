@@ -967,6 +967,6 @@ RESUMEN DE LO GENERADO:
 - Build: npm run build OK; verificado en el navegador (Playwright):
   panel /admin → Ventas → "Pedidos web" muestra el despacho de un
   pedido de invitado, sin errores de consola.
-COMMIT: pendiente
+COMMIT: 72522de feat(admin): datos de despacho y filtro de pedidos web en ventas
 DEPLOY: no
 ==================================================================

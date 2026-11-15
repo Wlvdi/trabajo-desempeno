@@ -1,16 +1,19 @@
 # AGENTS.md – Proyecto INFB8091 Desempeño de Sistemas (UTEM, 2026-2)
 
 ## 1. Contexto
-- Sitio: [subligol] – e-commerce de [sublimacio y estampados].
+- Sitio: Subligol – e-commerce de insumos de sublimación y estampados.
 - Objetivo académico: construir el sitio, instrumentarlo con GA4,
   generar carga sintética (k6) y analizar su desempeño.
 - Enunciado: guia_desempeno_sistemas.pdf (leerlo antes de proponer cambios).
 
 ## 2. Stack
-- Frontend: React + Vite (TypeScript) + gtag.js (GA4) + web-vitals.
-- Backend: Node.js + Express (en Docker). API REST propia
-  (/api/productos, /api/buscar, /api/carrito, /api/checkout, /api/auth).
-  Métricas con prom-client expuestas en /metrics.
+- Frontend: React + Vite en JavaScript (src/, sin TypeScript) + gtag.js
+  (GA4) + web-vitals. Cliente HTTP en src/services/api.js y analítica en
+  src/services/analytics.js.
+- Backend: Node.js + Express 5 en JavaScript ESM con JSDoc (backend/, en
+  Docker). API REST propia: /api/home, /api/productos, /api/buscar,
+  /api/auth, /api/carrito, /api/checkout, /api/ordenes, /api/vitals y
+  /api/admin. Métricas con prom-client en el puerto interno 9464 (/metrics).
 - Base de datos: PostgreSQL 16 en Docker (no Supabase), con
   pg_stat_statements habilitado y postgres-exporter.
 - Infra: docker compose; Prometheus + Grafana + node_exporter + cAdvisor.
@@ -45,6 +48,8 @@ de desempeño.
    proponer arreglos.
 10. Toda cifra que me entregues debe poder salir de un reporte o script
     reproducible; no inventes datos.
+11. En LogFile.txt, INTEGRANTE es el nombre real de quien escribió el
+    prompt (no el usuario de Git) y COMMIT lleva el hash y el mensaje.
 
 ## 5. Uso de modelos
 - Claude Opus 5.5 → arquitectura, análisis de resultados, depuración compleja.
@@ -52,11 +57,11 @@ de desempeño.
 
 
 ## 6. Comandos
-- Levantar API + BD + monitoreo: docker compose up -d
-- Frontend (desarrollo): cd frontend && npm run dev
+- Levantar API + BD + monitoreo: docker compose up -d --build
+- Frontend (desarrollo, en la raíz): npm run dev
 - Backend (desarrollo, sin Docker): cd backend && npm run dev
 - Migraciones y seed: cd backend && npm run migrate && npm run seed
-- Tests: npm test
-- E2E: npx playwright test
-- Build: npm run build
-- Carga: k6 run -e ESCENARIO=normal -e BASE_URL=http://localhost:3000 carga/k6/escenarios.js
+- Tests (backend + frontend; requiere la BD en Docker): npm test
+- Solo frontend: npm run test:frontend
+- Build del frontend: npm run build
+- Carga (pendiente, Fase 1.2): k6 run -e ESCENARIO=normal -e BASE_URL=http://localhost:3000 carga/k6/escenarios.js
