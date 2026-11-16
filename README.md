@@ -254,4 +254,4 @@ ejecución, dónde ver los resultados y cómo documentarlos en el informe:
 - Ramas: `main` (siempre desplegable) y ramas cortas `feat/...`
 - Commits: Conventional Commits en español
 - Instrucciones para el agente de codificación: `AGENTS.md` (`CLAUDE.md` apunta a él)
-- Registro de prompts: solo los significativos, en `LogFile.txt`
+- Registro de prompts: solo los significativos, en `PromptCard.txt` (formato Prompt Card, una tarjeta por versión)

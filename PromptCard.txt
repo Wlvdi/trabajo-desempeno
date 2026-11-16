@@ -1,0 +1,1303 @@
+======================================================================
+PROMPT CARDS – INFB8091 Desempeño de Sistemas (UTEM, 2026-2)
+Proyecto: Subligol
+Formato: Prompt Card, una tarjeta por versión del software. Cada
+tarjeta agrupa los prompts significativos de esa versión
+(arquitectura, funcionalidades completas, GA4/k6/observabilidad,
+decisiones de diseño, bugs relevantes). El Prompt Base y la salida
+obtenida se copian textuales; [NNNN] es el número de cada prompt.
+======================================================================
+
+ÍNDICE (fechas y horas en America/Santiago)
+  01. v0.1 – 14/11/2026  Configuración inicial del proyecto y del agente  [0001]
+  02. v0.2 – 14/11/2026  Backend propio: estructura, base de datos, catálogo y autenticación  [0002, 0003, 0004, 0005]
+  03. v0.3 – 14/11/2026  Carrito persistente, checkout transaccional y métricas  [0006, 0007, 0008]
+  04. v0.4 – 14/11/2026  Tienda conectada a la API propia e instrumentación con GA4  [0009, 0010]
+  05. v0.5 – 14/11/2026  Panel de administración sobre la API propia  [0011]
+  06. v1.0 – 15/11/2026  Generadores de carga con k6 y ejecución de las pruebas  [0012, 0013]
+
+======================================================================
+PROMPT CARD 01
+======================================================================
+Título del Prompt: Configuración inicial del proyecto y del agente
+Versión: v0.1 – 14/11/2026
+Autor: Wladimir Gallardo
+----------------------------------------------------------------------
+OBJETIVO
+  Preparar el repositorio para trabajar con un agente de codificación:
+  revisar AGENTS.md frente al enunciado, crear CLAUDE.md, el registro de
+  prompts y los archivos base (README, .gitignore, .env.example), antes
+  de escribir código de la aplicación. Dirigido al agente (Claude Code).
+----------------------------------------------------------------------
+PROMPT BASE
+  (texto completo de cada prompt, tal como se usó)
+
+  [0001] [COMPLETAR: 14-11-26] [COMPLETAR: HH:MM] – Wladimir – Claude Code (Opus 5.5)
+    Adjunto el enunciado del trabajo (docs/enunciado.pdf). Soy estudiante
+    del curso INFB8091 Desempeño de Sistemas (UTEM). Elegí la Opción 1:
+    e-commerce. Mi comercio se llamará [nombre], dedicado a [rubro].
+    [Si tienes logo, paleta o fotos, menciónalos aquí.]
+
+    Stack: React + Vite (TypeScript) en el frontend; Node.js + Express +
+    PostgreSQL en Docker en el backend; Prometheus + Grafana para
+    observabilidad; k6 para las pruebas de carga.
+
+    Antes de escribir código de la aplicación, necesito que:
+
+    1. Revises el AGENTS.md que ya existe en el repositorio y me propongas
+       mejoras si ves algo que falte o contradiga el enunciado.
+    2. Crees CLAUDE.md con una sola línea: "Lee y sigue AGENTS.md".
+    3. Crees LogFile.txt con un encabezado que explique el criterio de
+       registro (solo prompts significativos) y registres este mismo
+       prompt como entrada 0001, con fecha y hora en America/Santiago,
+       el prompt completo, el resumen de lo generado y el modelo usado.
+    4. Crees README.md, .gitignore (excluyendo .env, node_modules y
+       archivos pesados de carga) y .env.example.
+    5. Crees la estructura de carpetas: frontend/, backend/, infra/,
+       carga/k6/, carga/resultados/, analisis/, docs/.
+    6. Inicialices Git y conectes el remoto [URL del repositorio en GitHub].
+
+    Explícame primero lo que vas a crear y espera mi confirmación.
+
+----------------------------------------------------------------------
+VARIABLES / PLACEHOLDERS
+  {nombre} → nombre del comercio (Subligol)
+  {rubro} → a qué se dedica el comercio
+  {url_repositorio} → remoto de GitHub del grupo
+  {stack} → tecnologías elegidas para frontend, backend, observabilidad y carga
+----------------------------------------------------------------------
+EJEMPLO DE ENTRADA
+  Enunciado del trabajo (PDF), el AGENTS.md existente y el stack
+  elegido (React + Vite, Node.js + Express + PostgreSQL, Prometheus +
+  Grafana, k6).
+----------------------------------------------------------------------
+EJEMPLO DE SALIDA ESPERADA
+  Primero un plan de lo que se va a crear; tras la confirmación:
+  CLAUDE.md de una línea, registro de prompts con la entrada 0001,
+  AGENTS.md revisado y archivos base del repositorio.
+
+  Salida obtenida (resumen de lo generado):
+
+  [0001]
+    - Diseño: diagnóstico del sitio existente (stack actual, funcionalidades,
+      brechas frente al enunciado) y configuración del flujo de trabajo
+      con el agente.
+    - Archivos: CLAUDE.md (nuevo), LogFile.txt (nuevo), AGENTS.md (revisado),
+      y los que faltaran entre README.md, .gitignore y .env.example.
+    - Instalaciones: ninguna
+    - Tests: no aplica
+    - Build: no aplica
+
+----------------------------------------------------------------------
+GUÍAS DE ESTILO
+  Tono: técnico, español neutro
+  Formato: lista numerada de tareas; respuesta con plan y luego archivos
+  Longitud: prompt de ~25 líneas; respuesta sin límite fijo
+----------------------------------------------------------------------
+CASOS DE PRUEBA
+  Caso 1: Repositorio con AGENTS.md previo → propuestas de mejora antes de editarlo
+  Caso 2: Pedido de crear archivos → el agente explica y espera confirmación antes de crearlos
+----------------------------------------------------------------------
+ITERACIONES / FEEDBACK
+  Iteración 1: el agente diagnosticó primero el sitio existente (stack, funciones y
+               brechas frente al enunciado) en vez de crear todo desde cero.
+  Iteración 2: la regla "explicar antes de implementar y esperar confirmación" quedó
+               en AGENTS.md y se aplicó en todos los prompts siguientes.
+----------------------------------------------------------------------
+METADATOS
+  Fecha de creación: 14/11/2026
+  Última modificación: 14/11/2026
+  Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – configuración
+  Agente y modelo: Claude Code (Opus 5.5)
+  Commits:
+    [0001] a1b2c3d chore: configuración del agente, LogFile y archivos base
+  Deploy:
+    [0001] no
+======================================================================
+
+======================================================================
+PROMPT CARD 02
+======================================================================
+Título del Prompt: Backend propio: estructura, base de datos, catálogo y autenticación
+Versión: v0.2 – 14/11/2026
+Autor: Wladimir Gallardo y Rodrigo Donoso
+----------------------------------------------------------------------
+OBJETIVO
+  Reemplazar Supabase por una API propia (Node.js + Express 5 +
+  PostgreSQL 16 en Docker) con páginas de distinto peso para medirlas en
+  la Fase 2: estructura y salud, migraciones con datos semilla, catálogo
+  con búsqueda sin índices, y registro e inicio de sesión con argon2id y JWT.
+----------------------------------------------------------------------
+PROMPT BASE
+  (texto completo de cada prompt, tal como se usó)
+
+  [0002] 14-11-26 13:16 – Wladimir – Claude Code (Opus 5.5)
+    Propón el plan para construir el backend propio (Node.js + Express +
+    PostgreSQL en Docker) que reemplace a Supabase. Decisiones: backend en
+    JavaScript; migrar también el panel de administración (después de la
+    tienda); seguir tus recomendaciones (dejar el frontend en src/ por
+    ahora y eliminar database/ al pasar el esquema a migraciones); la
+    búsqueda parte sin índices para aplicarlos como mejora en la Fase 2.
+    Comienza con el commit 1.
+
+  [0003] 14-11-26 13:49 – Wladimir – Claude Code (Opus 5.5)
+    Explícame el diseño de la base de datos para el commit 2 (migraciones
+    desde Supabase y datos semilla). Confirmo: npm test puede requerir el
+    contenedor de la base de datos; aplicar la restricción de stock no
+    negativo; guardar los pedidos web en la tabla ventas con columnas
+    nuevas en vez de una tabla pedidos. Además, ¿cómo revisará el profesor
+    una URL pública si todo corre con Docker en mi PC y sin Supabase?
+
+  [0004] 14-11-26 14:47 – Rodrigo – Claude Code (Opus 5.5)
+    Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+    estado en 5 viñetas como indica AGENTS.md.
+
+    Contexto: estamos migrando Subligol de Supabase a una API propia
+    (Node.js + Express 5 + PostgreSQL 16 en Docker), en JavaScript ESM con
+    JSDoc. Ya están hechos el commit 1 (estructura Express y /api/salud) y el
+    commit 2 (migraciones en backend/migraciones/ y seed determinista en
+    backend/seeds/). Los tests usan Vitest + Supertest contra la base
+    subligol_test (backend/tests/setup-bd.js).
+
+    Tarea: commit 3, endpoints de catálogo de la tienda, con estos pesos de
+    carga distintos para la Fase 2:
+
+    1. GET /api/home (página LIVIANA): productos destacados (activos) y las
+       categorías con su cantidad de productos.
+    2. GET /api/categorias: listado de categorías.
+    3. GET /api/productos (página MEDIA): filtros y paginación en el
+       servidor. Parámetros: pagina (por defecto 1), limite (por defecto 12,
+       máximo 48), categoria (id), temporada, precio_min, precio_max,
+       en_stock (true/false), orden (destacado | precio_asc | precio_desc |
+       nombre_asc | nombre_desc | stock_desc). Solo productos activos.
+       Respuesta: { items, total, pagina, limite, totalPaginas }.
+    4. GET /api/productos/:id (página PESADA): producto con su categoría,
+       galería (producto_imagenes ordenada), unidades vendidas en los
+       últimos 90 días, y 4 productos relacionados de la misma categoría
+       ordenados por unidades vendidas (join con detalle_ventas). 404 si no
+       existe o el id no es un UUID válido.
+    5. GET /api/buscar?q=&categoria=: búsqueda con ILIKE en nombre y
+       descripcion, paginada igual que /api/productos. q obligatorio, de 2 a
+       100 caracteres. Decisión del grupo: la búsqueda va SIN índices
+       (pg_trgm queda como mejora medible en la Fase 2); no crees índices.
+
+    Requisitos:
+    - Los nombres de los campos deben coincidir con los que usa el frontend
+      (src/services/mockData.js y las vistas en src/views/store/):
+      categoria_nombre, imagenes_galeria, descripcion_larga, especificaciones,
+      precio_venta, stock_actual, stock_minimo, destacado, imagen_url,
+      temporada, sku. Los numeric de PostgreSQL deben salir como número,
+      no como texto.
+    - Solo consultas parametrizadas (nada de concatenar strings en el SQL).
+      El orden se elige de una lista blanca.
+    - Validación de parámetros con respuestas 400 claras en español.
+    - Una ruta por archivo en backend/src/rutas/, registradas en
+      backend/src/app.js. Si conviene, separa las consultas SQL en
+      backend/src/consultas/.
+    - No toques todavía el frontend ni agregues métricas (son los commits
+      8 y 7).
+    - Tests de integración para cada endpoint usando sembrar() de
+      backend/seeds/seed.js sobre subligol_test: paginación, cada filtro,
+      cada orden, límites, 400 y 404, que la búsqueda encuentre productos
+      conocidos del seed y que el detalle traiga galería y relacionados.
+      Los tests existentes deben seguir pasando.
+
+    Antes de escribir código, explícame el diseño de cada consulta SQL
+    (joins, qué hace pesada a cada página) y la lista de archivos que vas a
+    crear o modificar, y espera mi confirmación. Al terminar, ejecuta
+    npm test, prueba los endpoints con docker compose up -d --build y curl,
+    y pregúntame si registro el prompt en LogFile.txt, si hago commit
+    (feat(api): home, categorías, catálogo, detalle y búsqueda) y si hago
+    deploy.
+
+  [0005] 14-11-26 15:25 – Rodrigo – Claude Code (Opus 5.5)
+    Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+    estado en 5 viñetas como indica AGENTS.md.
+
+    Contexto: Subligol está migrando de Supabase a una API propia (Node.js +
+    Express 5 + PostgreSQL 16 en Docker), en JavaScript ESM con JSDoc. Ya
+    están hechos: commit 1 (estructura y /api/salud), commit 2 (migraciones
+    y seed determinista; la tabla usuarios tiene email único sin importar
+    mayúsculas, nombre, hash_contrasena y rol 'cliente'|'admin'), commit 3
+    (catálogo: /api/home, /api/categorias, /api/productos, /api/buscar, con
+    validación en backend/src/validacion.js) y la corrección del seed. El
+    seed crea test001..test200@ejemplo.cl (contraseña SEED_CONTRASENA_CLIENTES)
+    y admin@subligol.cl (SEED_CONTRASENA_ADMIN), con hash argon2id.
+
+    Tarea: commit 4, registro e inicio de sesión con argon2 y JWT.
+
+    Endpoints:
+    1. POST /api/auth/registro { nombre, email, contrasena } → 201
+       { usuario, token }. El email se guarda recortado y en minúsculas.
+       Validaciones con 400 en español: email con formato válido (máximo 254),
+       nombre de 2 a 80 caracteres, contrasena de 8 a 128. Si el email ya
+       existe (sin importar mayúsculas) → 409. Siempre se crea con rol
+       'cliente' (ignorar cualquier rol enviado en el cuerpo).
+    2. POST /api/auth/login { email, contrasena } → 200 { usuario, token }.
+       Credenciales incorrectas → 401 con el MISMO mensaje si el correo no
+       existe o si la contraseña es incorrecta. Si el correo no existe,
+       verifica igual contra un hash ficticio para que el tiempo de respuesta
+       no revele qué correos están registrados.
+    3. GET /api/auth/yo con Authorization: Bearer <token> → 200 con el
+       usuario leído desde la base. Sin token, token inválido, alterado o
+       expirado → 401.
+    - `usuario` en las respuestas = { id, email, nombre, rol }; nunca
+      devolver hash_contrasena.
+
+    Diseño:
+    - JWT con la librería jsonwebtoken, algoritmo HS256 fijado también al
+      verificar. Payload mínimo: sub (id) y rol. Variables de entorno:
+      JWT_SECRETO (obligatorio; si NODE_ENV=production y falta, la API no
+      arranca) y JWT_EXPIRACION (por defecto 2h). Agrégalas a config.js,
+      a .env.example y al servicio api de docker-compose.yml.
+    - argon2id con parámetros configurables por entorno (ARGON2_MEMORIA_KIB,
+      ARGON2_ITERACIONES, ARGON2_PARALELISMO; por defecto los de la librería).
+      Motivo: el hash es caro en CPU y memoria, y el login será uno de los
+      cuellos de botella que mediremos en la Fase 2. Centraliza hashear y
+      verificar en un módulo (por ejemplo backend/src/seguridad/contrasenas.js)
+      y haz que seeds/seed.js use ese mismo módulo para que los parámetros
+      sean idénticos.
+    - Middlewares en backend/src/middlewares/auth.js: autenticar (obligatorio,
+      deja req.usuario = { id, rol }), autenticarOpcional (para el carrito del
+      commit 5) y requerirRol('admin') (para el panel). Respuestas 401/403 en
+      JSON y en español.
+    - Sin límite de intentos (rate limiting) por ahora: interferiría con las
+      pruebas de carga. Déjalo anotado como mejora de seguridad.
+    - No toques el frontend ni agregues métricas (commits 8 y 7).
+
+    Tests (Vitest + Supertest, base subligol_test con sembrar()):
+    - registro OK (201, sin hash en la respuesta, rol cliente aunque se envíe
+      rol admin), duplicado con otras mayúsculas → 409, cada validación → 400;
+    - login OK con test001@ejemplo.cl y admin@subligol.cl (rol admin),
+      contraseña incorrecta y correo inexistente → 401 con el mismo mensaje,
+      email con mayúsculas funciona;
+    - /api/auth/yo: token válido → 200; sin token, malformado, firmado con
+      otro secreto, alterado, expirado y con algoritmo "none" → 401;
+    - requerirRol: cliente → 403, admin → pasa;
+    - módulo de contraseñas: hashea con argon2id y verifica.
+    Los 101 tests existentes deben seguir pasando.
+
+    Antes de escribir código, explícame el diseño (archivos a crear y
+    modificar, librerías nuevas con versión, flujo de cada endpoint) y espera
+    mi confirmación. Al terminar, ejecuta npm test, prueba con
+    docker compose up -d --build y curl (registro, login, yo y los errores),
+    y pregúntame si registro el prompt en LogFile.txt, si hago commit
+    (feat(auth): registro e inicio de sesión con argon2 y JWT) y si hago
+    deploy.
+
+----------------------------------------------------------------------
+VARIABLES / PLACEHOLDERS
+  {n_commit} → número del commit del plan de 10 (1 a 4)
+  {contexto} → commits ya hechos y piezas existentes que se reutilizan
+  {tarea} → endpoints con sus parámetros, validaciones y respuestas
+  {tests} → casos de prueba exigidos y cantidad de tests previos que deben seguir pasando
+  {mensaje_commit} → mensaje en Conventional Commits, en español
+----------------------------------------------------------------------
+EJEMPLO DE ENTRADA
+  "Tarea: commit 3, endpoints de catálogo de la tienda" con la lista
+  de endpoints (home liviana, listado media, detalle pesada, búsqueda),
+  los nombres de campos del frontend y los tests requeridos.
+----------------------------------------------------------------------
+EJEMPLO DE SALIDA ESPERADA
+  Diseño de cada consulta SQL y lista de archivos; tras la
+  confirmación, código, tests en verde, prueba con docker compose y curl,
+  y las preguntas de registro, commit y deploy.
+
+  Salida obtenida (resumen de lo generado):
+
+  [0002]
+    - Diseño: plan de 10 commits (estructura, migraciones y seed,
+      catálogo/búsqueda, auth argon2+JWT, carrito persistente, checkout
+      transaccional con pago mock, métricas prom-client + Prometheus/
+      Grafana/exportadores, frontend sin Supabase, panel admin, docs).
+      Endpoints con peso distinto: home (liviana), listado (media),
+      detalle (pesada). Pool de PostgreSQL configurable (PG_POOL_MAX).
+    - Commit 1 implementado:
+      backend/package.json, backend/src/{app,server,config}.js,
+      backend/src/db/pool.js, backend/src/rutas/salud.js,
+      backend/src/middlewares/errores.js, backend/Dockerfile,
+      backend/.dockerignore, docker-compose.yml (db PostgreSQL 16 con
+      pg_stat_statements + api), variables nuevas en .env.example,
+      script "test" en package.json raíz.
+    - Instalaciones: express 5.3.0, pg 8.23.1; dev: vitest 5.1.0,
+      supertest 7.3.2.
+    - Tests: backend/tests/salud.test.js (5 casos, OK).
+    - Build: npm run build OK; docker compose up OK (db y api healthy,
+      GET /api/salud 200).
+
+  [0003]
+    - Diseño: esquema de Supabase adaptado a PostgreSQL propio (tabla
+      usuarios en lugar de auth.users, sin RLS, auditoría con
+      fn_usuario_sesion()); columnas de tienda en productos, galería
+      producto_imagenes, datos de pedido web en ventas, carritos
+      persistentes, CHECK stock_actual >= 0, pg_stat_statements.
+      Búsqueda sin índices (mejora a medir en Fase 2).
+      Deploy explicado: mismo docker compose en VM gratuita + Caddy/HTTPS.
+    - Archivos: backend/migraciones/001_esquema_base.sql,
+      backend/migraciones/002_tienda.sql, backend/scripts/migrar.js,
+      backend/seeds/{generador,seed}.js, backend/vitest.config.js,
+      backend/tests/{setup-bd,bd.test,generador.test,seed.test}.js,
+      carga/k6/datos/usuarios.csv; .env.example (contraseñas del seed);
+      database/ eliminada.
+    - Datos semilla deterministas: 500 productos, 1287 imágenes,
+      201 usuarios, 3000 ventas (7460 líneas), 120 compras.
+    - Instalaciones: argon2 0.45.2.
+    - Tests: 31 casos en 4 archivos, OK.
+    - Build: npm run migrate y npm run seed OK; imagen Docker OK.
+
+  [0004]
+    - Diseño confirmado: limite > 48 responde 400 (no se recorta);
+      producto inactivo responde 404; relacionados ordenados por unidades
+      vendidas de todo el historial (ventas no anuladas). numeric -> float8
+      en el SELECT; costo_unitario no se expone. Catálogo y búsqueda:
+      count y página en paralelo con el mismo WHERE; ORDER BY desde lista
+      blanca con desempate por id. Detalle: galería con array_agg,
+      unidades_vendidas_90d (detalle_ventas JOIN ventas, now() - 90 días) y
+      relacionados con agregación de detalle_ventas. Búsqueda ILIKE sin
+      índices, con escape de % y _. Sin cambios en frontend ni métricas.
+    - Riesgo anotado: las ventas del seed terminan el 01-11-2026; desde el
+      30-01-2027 unidades_vendidas_90d sería 0 si no se ajusta el seed.
+    - Archivos nuevos: backend/src/validacion.js,
+      backend/src/consultas/{productos,categorias}.js,
+      backend/src/rutas/{home,categorias,productos,buscar}.js,
+      backend/tests/{ayudantes,validacion.test,home.test,productos.test,
+      producto-detalle.test,buscar.test}.js. Modificado: backend/src/app.js.
+    - Instalaciones: ninguna.
+    - Tests: 99 casos en 9 archivos, OK (31 previos + 68 nuevos).
+    - Build: docker compose up -d --build OK; curl a /api/home,
+      /api/categorias, /api/productos, /api/productos/:id y /api/buscar OK,
+      incluidos 400 y 404.
+
+  [0005]
+    - Diseño confirmado: config.js pasa a leerConfig(env) puro; JWT_SECRETO
+      obligatorio en producción con mínimo 32 caracteres (si no, la API no
+      arranca); en desarrollo/test, si falta, secreto aleatorio por proceso
+      con aviso. JWT HS256 fijado al firmar y verificar, payload sub + rol.
+      autenticarOpcional responde 401 con token inválido (no lo trata como
+      anónimo). Registro sin SELECT previo: el índice único
+      uq_usuarios_email resuelve el 409 (código 23505), también con
+      registros simultáneos. Login con hash ficticio perezoso con los mismos
+      parámetros de argon2id. /yo lee el usuario desde la base (401 si ya no
+      existe). Rate limiting anotado como mejora pendiente en el README.
+    - Archivos nuevos: backend/src/seguridad/{contrasenas,tokens}.js,
+      backend/src/middlewares/auth.js, backend/src/rutas/auth.js,
+      backend/tests/{auth,auth-middlewares,contrasenas,config}.test.js.
+      Modificados: backend/src/{config,app,server,validacion}.js,
+      backend/seeds/seed.js (usa hashear()), backend/vitest.config.js
+      (JWT_SECRETO de prueba), backend/package.json y package-lock.json,
+      docker-compose.yml (JWT_* y ARGON2_* en el servicio api),
+      .env.example, README.md. Fuera del repo: JWT_SECRETO aleatorio en .env.
+    - Instalaciones: jsonwebtoken 9.0.3.
+    - Tests: 163 casos en 13 archivos, OK (101 previos + 62 nuevos).
+    - Build: docker compose up -d --build OK; curl a registro (201, 409,
+      400), login (200 cliente y admin, 401 con el mismo mensaje para clave
+      incorrecta y correo inexistente) y yo (200; 401 sin token, alterado y
+      alg none).
+
+----------------------------------------------------------------------
+GUÍAS DE ESTILO
+  Tono: técnico
+  Formato: contexto + tarea + requisitos + tests, en viñetas
+  Longitud: prompts de 10 a 75 líneas
+----------------------------------------------------------------------
+CASOS DE PRUEBA
+  Caso 1: GET /api/productos?limite=49 → 400 con mensaje en español
+  Caso 2: GET /api/productos/<id no UUID o inactivo> → 404
+  Caso 3: Login con correo inexistente o clave incorrecta → 401 con el mismo mensaje
+  Caso 4: Token alterado, expirado o con alg "none" → 401
+  Caso 5: Registro con el mismo email en otras mayúsculas → 409
+----------------------------------------------------------------------
+ITERACIONES / FEEDBACK
+  Iteración 1: se pasó de un plan general (0002) a prompts con contexto, tarea, requisitos
+               y tests explícitos (0004 y 0005), lo que redujo las aclaraciones.
+  Iteración 2: el registro no hace SELECT previo: el índice único resuelve el 409,
+               también con registros simultáneos.
+  Iteración 3: se anotó el riesgo de las ventas del seed (unidades_vendidas_90d en 0
+               desde el 30-01-2027).
+----------------------------------------------------------------------
+METADATOS
+  Fecha de creación: 14/11/2026
+  Última modificación: 14/11/2026
+  Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – backend
+  Agente y modelo: Claude Code (Opus 5.5)
+  Commits:
+    [0002] 8b145c8 chore(backend): estructura Express, /api/salud, Dockerfile y compose con PostgreSQL
+    [0003] 9df08dc feat(db): migraciones adaptadas desde Supabase y seed de 500 productos
+    [0004] 417e1c1 feat(api): home, categorías, catálogo, detalle y búsqueda
+    [0005] 586a24d feat(auth): registro e inicio de sesión con argon2 y JWT
+  Deploy:
+    [0002] no
+    [0003] no
+    [0004] no
+    [0005] no
+======================================================================
+
+======================================================================
+PROMPT CARD 03
+======================================================================
+Título del Prompt: Carrito persistente, checkout transaccional y métricas
+Versión: v0.3 – 14/11/2026
+Autor: Wladimir Gallardo y Rodrigo Donoso
+----------------------------------------------------------------------
+OBJETIVO
+  Completar el flujo de compra en el servidor (carrito en la base de
+  datos y checkout sin sobreventa ni deadlocks, con pago simulado) e
+  instrumentar la API con prom-client, Prometheus, Grafana y exportadores
+  para observar el desempeño bajo carga.
+----------------------------------------------------------------------
+PROMPT BASE
+  (texto completo de cada prompt, tal como se usó)
+
+  [0006] 14-11-26 15:44 – Wladimir – Claude Code (Opus 5.5)
+    Sigamos con el commit 5: carrito persistente en base de datos.
+    Confirmo el diseño propuesto: carritos de usuarios con sesión y también
+    carritos anónimos en la base de datos identificados con la cabecera
+    X-Carrito-Id, fusión del carrito anónimo al iniciar sesión, validación
+    de stock sin reserva (la definitiva va en el checkout) y precios
+    siempre actuales. Implementa este commit aquí, no en el otro PC.
+
+  [0007] 14-11-26 15:58 – Rodrigo – Claude Code (Opus 5.5)
+    Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+    estado en 5 viñetas como indica AGENTS.md.
+
+    Contexto: Subligol está migrando de Supabase a una API propia (Node.js +
+    Express 5 + PostgreSQL 16 en Docker), en JavaScript ESM con JSDoc. Ya
+    están hechos los commits 1 a 5: estructura y /api/salud; migraciones y
+    seed determinista; catálogo (/api/home, /api/productos, /api/buscar);
+    auth con argon2id y JWT (middlewares autenticar, autenticarOpcional y
+    requerirRol en backend/src/middlewares/auth.js); y carrito persistente
+    (/api/carrito, consultas en backend/src/consultas/carrito.js, ayudante
+    enTransaccion en backend/src/db/transaccion.js, ErrorHttp con detalle en
+    backend/src/middlewares/errores.js). Esquema relevante: ventas tiene
+    codigo (único), estado ('PENDIENTE'|'PAGADO'|'ANULADO'), medio_pago,
+    codigo_autorizacion, costo_envio, despacho (jsonb), cliente_id y
+    usuario_id; el trigger de detalle_ventas descuenta stock y escribe
+    audit_logs; productos tiene CHECK stock_actual >= 0; la auditoría toma
+    el usuario de set_config('app.usuario_id', ..., true).
+
+    Tarea: commit 6, checkout transaccional con pago simulado, y consulta de
+    órdenes.
+
+    Endpoints:
+    1. POST /api/checkout (requiere sesión) con
+       { medio_pago, despacho: { nombre, apellido, telefono, region, comuna,
+       direccion } }. Revisa src/views/store/CheckoutStoreView.jsx para usar
+       los mismos campos de despacho que el frontend. Respuesta 201 con la
+       orden: { id, codigo, fecha, estado, medio_pago, codigo_autorizacion,
+       items, neto, costo_envio, total, despacho }.
+    2. GET /api/ordenes (requiere sesión): órdenes del usuario, de la más
+       reciente a la más antigua, paginadas con pagina y limite como el
+       catálogo.
+    3. GET /api/ordenes/:id (requiere sesión): detalle con sus items. Solo
+       el dueño o un admin; para cualquier otro, o si el id no es UUID, 404
+       (no 403, para no revelar que existe).
+
+    Flujo del checkout, TODO en una sola transacción:
+    - Bloquear el carrito del usuario. Carrito vacío → 400.
+    - Bloquear los productos del carrito con SELECT ... FOR UPDATE en orden
+      fijo (ORDER BY id) para evitar deadlocks entre compras simultáneas.
+    - Validar que estén activos y con stock. Si alguno no alcanza → 409 con
+      la lista { producto_id, nombre, solicitado, disponible } y SIN cambios
+      en la base.
+    - Precios actuales de productos (no del carrito). Envío: 0 si el neto es
+      >= 30000, si no 3990 (la misma regla del seed; déjala como constante
+      documentada).
+    - Código de orden SUB-AAAA-NNNNNN a partir de una secuencia nueva en una
+      migración 003 (que empiece en 500000, para no chocar con los códigos
+      del seed, que van de 100000 a 102999).
+    - Fijar app.usuario_id; insertar ventas (canal 'Web', estado 'PAGADO',
+      cliente_id y usuario_id = el usuario) y detalle_ventas en un solo
+      INSERT de varias filas (los triggers descuentan stock y auditan);
+      vaciar el carrito.
+    Pago:
+    - medio_pago 'mock' aprueba sin llamar a servicios externos y genera un
+      codigo_autorizacion 'MOCK-xxxxxx'. Solo se acepta si PAGO_MOCK=true
+      (por defecto true fuera de producción y false en producción; agrégalo a
+      config.js, .env.example y docker-compose.yml). Si está deshabilitado
+      → 400 claro.
+    - medio_pago 'webpay' → 501 "no implementado aún" (la integración con el
+      sandbox real de Transbank será otro commit). Cualquier otro valor → 400.
+    - Motivo (guía, sección 5.3): bajo carga nunca se debe llamar al sandbox
+      de un tercero.
+
+    Requisitos:
+    - Validaciones con 400 en español (largos máximos en cada campo de
+      despacho). Solo consultas parametrizadas.
+    - No toques el frontend ni agregues métricas (commits 8 y 7).
+    - Documenta en el código que el checkout mantiene una conexión del pool
+      durante toda la transacción (dato importante para la Fase 2).
+
+    Tests (Vitest + Supertest sobre subligol_test con sembrar()):
+    - compra OK: 201, descuenta stock, crea venta y detalle con
+      cliente_id, deja auditoría VENTA_SALIDA con el usuario, vacía el
+      carrito, aplica la regla de envío en ambos casos, usa el precio actual
+      si cambió después de agregar al carrito, y el código tiene el formato;
+    - stock insuficiente → 409 con la lista y sin cambios (stock, ventas,
+      carrito); carrito vacío → 400; sin sesión → 401; mock deshabilitado →
+      400; webpay → 501; validaciones de despacho → 400;
+    - concurrencia: 20 usuarios distintos compran a la vez un producto con
+      stock 5 → exactamente 5 compras 201, el resto 409 y stock final 0;
+      dos compras simultáneas con los mismos 2 productos en distinto orden en
+      el carrito terminan sin deadlock;
+    - órdenes: el dueño ve su orden y su lista; otro cliente → 404; admin
+      → 200; paginación de /api/ordenes.
+    Los 196 tests existentes deben seguir pasando.
+
+    Antes de escribir código, explícame el diseño (archivos a crear y
+    modificar, la migración 003, el flujo SQL del checkout y cómo evita
+    sobreventa y deadlocks) y espera mi confirmación. Al terminar, ejecuta
+    npm test, prueba con docker compose up -d --build y curl (login,
+    agregar al carrito, checkout, órdenes y los errores), y pregúntame si
+    registro el prompt en LogFile.txt, si hago commit (feat(checkout):
+    checkout transaccional con pago simulado) y si hago deploy.
+
+  [0008] 14-11-26 16:45 – Wladimir – Claude Code (Opus 5.5)
+    Explícame el diseño del commit 7 (métricas de la API con prom-client y
+    monitoreo con Prometheus, Grafana, node_exporter, cAdvisor y
+    postgres-exporter en docker compose); lo implementaremos en este PC.
+    Confirmo: /metrics en un puerto interno (9464) que no se publica; el
+    monitoreo se levanta siempre con docker compose up -d; métricas de
+    negocio de compras, logins y duración de argon2.
+
+----------------------------------------------------------------------
+VARIABLES / PLACEHOLDERS
+  {decisiones} → diseño ya confirmado por el grupo (carrito anónimo, PAGO_MOCK, puertos)
+  {flujo} → pasos de la transacción del checkout
+  {metricas} → métricas técnicas y de negocio que se exponen
+  {mensaje_commit} → mensaje en Conventional Commits
+----------------------------------------------------------------------
+EJEMPLO DE ENTRADA
+  "Tarea: commit 6, checkout transaccional con pago simulado" con el
+  flujo en una sola transacción, la regla de envío y los casos de
+  concurrencia.
+----------------------------------------------------------------------
+EJEMPLO DE SALIDA ESPERADA
+  Explicación de cómo se evita la sobreventa y los deadlocks; código,
+  migración 003, tests de concurrencia y verificación con curl.
+
+  Salida obtenida (resumen de lo generado):
+
+  [0006]
+    - Diseño: GET /api/carrito (lectura simple, sin transacción ni
+      bloqueo), POST /api/carrito/items, PATCH y DELETE
+      /api/carrito/items/:productoId, DELETE /api/carrito y
+      POST /api/carrito/fusionar. Modificaciones en transacción con
+      SELECT ... FOR UPDATE del carrito y upsert en una sola sentencia.
+      Límites: 99 unidades por producto y 50 productos distintos. 409 con
+      stock_disponible si no alcanza el stock. Items con los mismos campos
+      que CartContext.jsx. Un id anónimo nunca accede al carrito de un
+      usuario registrado.
+    - Archivos nuevos: backend/src/consultas/carrito.js,
+      backend/src/rutas/carrito.js, backend/src/db/transaccion.js,
+      backend/tests/carrito.test.js. Modificados: backend/src/app.js,
+      backend/src/middlewares/errores.js (detalle en errores 4xx),
+      backend/src/validacion.js (campoUuid, campoEntero).
+    - Instalaciones: ninguna.
+    - Tests: 196 casos en 14 archivos, OK (163 previos + 33 nuevos,
+      incluye 10 "agregar" concurrentes y fusión de carritos).
+    - Build: npm run build OK; docker compose up -d --build y curl
+      (agregar anónimo, ver, límite de unidades, login y fusionar) OK.
+
+  [0007]
+    - Diseño confirmado: validaciones de cuerpo y medio de pago ANTES de
+      pedir conexión al pool; luego una transacción (enTransaccion) que
+      mantiene la conexión hasta el COMMIT (documentado). Carrito con
+      FOR UPDATE; productos con SELECT ... ORDER BY p.id FOR UPDATE OF p
+      (orden fijo: sin deadlocks; en READ COMMITTED la espera devuelve el
+      stock ya actualizado: sin sobreventa). 409 con la lista de faltantes
+      (inactivo = disponible 0) y ROLLBACK; el CHECK de stock (23514) también
+      se traduce a 409. Montos en centavos con precios actuales; envío con
+      UMBRAL_ENVIO_GRATIS=30000 y COSTO_ENVIO=3990 en src/pagos.js. Venta con
+      código SUB-AAAA (año en hora de Chile) + seq_codigo_venta; detalle en
+      un INSERT de varias filas; vaciado del carrito. despacho acepta depto
+      opcional; rut y email no se guardan; cliente_nombre = nombre + apellido.
+      PAGO_MOCK: por defecto true fuera de producción y false en producción;
+      en compose ${PAGO_MOCK:-false} y PAGO_MOCK=true en .env local y en
+      .env.example (con advertencia para deploy real). /api/ordenes/:id
+      responde 404 tanto si no existe como si es ajena.
+    - Corrección relacionada: manejarErrores conserva el mensaje de un
+      ErrorHttp 5xx lanzado a propósito (501); los errores inesperados
+      siguen ocultos como 500.
+    - Archivos nuevos: backend/migraciones/003_checkout.sql,
+      backend/src/pagos.js, backend/src/consultas/ordenes.js,
+      backend/src/rutas/{checkout,ordenes}.js,
+      backend/tests/{ayudantes-checkout,checkout.test,
+      checkout-concurrencia.test,ordenes.test,pagos.test}.js.
+      Modificados: backend/src/{app,config}.js,
+      backend/src/middlewares/errores.js,
+      backend/tests/{bd,config,salud}.test.js, docker-compose.yml,
+      .env.example. Fuera del repo: PAGO_MOCK=true en .env.
+    - Instalaciones: ninguna.
+    - Tests: 241 casos en 18 archivos, OK (196 previos + 45 nuevos);
+      concurrencia estable en 3 corridas adicionales (20 compradores con
+      stock 5 → 5 × 201 y 15 × 409, stock final 0; 10 rondas cruzadas A/B
+      sin deadlock).
+    - Build: docker compose up -d --build OK; npm run migrate aplicó
+      003_checkout.sql en la base de desarrollo; prueba con fetch/curl de
+      login, carrito, checkout (201 SUB-2026-500000, stock descontado,
+      carrito vacío), órdenes (lista, detalle dueño 200, otro 404, admin 200,
+      id no UUID 404) y errores (400 carrito vacío, 401, 501 webpay, 400
+      medio y despacho, 409 stock insuficiente).
+
+  [0008]
+    - Diseño: backend/src/metricas.js con registro propio por app:
+      http_request_duration_seconds{metodo,ruta,estado} (ruta como
+      plantilla; "no_encontrada" para rutas inexistentes),
+      http_peticiones_en_curso, api_pg_pool_conexiones{estado} (total,
+      libres, en_espera), api_pg_pool_maximo,
+      api_contrasenas_duracion_segundos{operacion}, api_logins_total,
+      api_compras_total y métricas predeterminadas de Node (event loop).
+      GET /metrics en servidor aparte (puerto 9464, no publicado).
+    - Infra: docker-compose.yml con prometheus v3.5.0 (scrape 5 s,
+      remote write para k6), grafana 12.1.1, node-exporter v1.9.1,
+      cadvisor 0.55.0 (ghcr.io; v0.52.1 de gcr.io no reconoce contenedores
+      con el almacén containerd de Docker 29) y postgres-exporter v0.17.1
+      (stat_statements). PostgreSQL con track_io_timing. Prometheus y
+      Grafana solo en 127.0.0.1. Dashboard provisionado "Subligol –
+      Desempeño": 24 paneles en 4 filas (tráfico, recursos, Node y pool,
+      base de datos y negocio).
+    - Archivos nuevos: backend/src/metricas.js,
+      backend/tests/metricas.test.js, infra/prometheus/prometheus.yml,
+      infra/grafana/provisioning/{datasources,dashboards}/*.yml,
+      infra/grafana/dashboards/subligol.json. Modificados: app.js,
+      server.js, config.js, rutas/auth.js, rutas/checkout.js, Dockerfile,
+      docker-compose.yml, .env.example (GRAFANA_CONTRASENA y puertos).
+    - Instalaciones: prom-client 15.1.3.
+    - Tests: 259 casos en 19 archivos, OK (242 previos + 17 nuevos).
+    - Build: npm run build OK; docker compose config y promtool OK; stack
+      levantado con los 5 objetivos de Prometheus en "up"; tráfico de humo
+      de ~90 s y las 35 consultas del dashboard con datos; Grafana con
+      datasource OK y dashboard como inicio.
+
+----------------------------------------------------------------------
+GUÍAS DE ESTILO
+  Tono: técnico
+  Formato: viñetas y pasos numerados
+  Longitud: prompts cortos (decisiones confirmadas) o largos (~95 líneas, especificación completa)
+----------------------------------------------------------------------
+CASOS DE PRUEBA
+  Caso 1: 20 compradores simultáneos y stock 5 → exactamente 5 compras 201, 15 × 409, stock final 0
+  Caso 2: Dos compras con los mismos productos en distinto orden → sin deadlock
+  Caso 3: Agregar al carrito más que el stock → 409 con stock_disponible
+  Caso 4: medio_pago "webpay" (en esta versión) → 501 no implementado
+  Caso 5: Tráfico de humo de ~90 s → las 35 consultas del dashboard con datos
+----------------------------------------------------------------------
+ITERACIONES / FEEDBACK
+  Iteración 1: manejarErrores ocultaba el mensaje del 501; se ajustó para conservar
+               los ErrorHttp 5xx lanzados a propósito.
+  Iteración 2: cAdvisor de gcr.io no reconocía contenedores con Docker 29; se cambió
+               a la imagen 0.55.0 de ghcr.io.
+----------------------------------------------------------------------
+METADATOS
+  Fecha de creación: 14/11/2026
+  Última modificación: 14/11/2026
+  Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – compra y observabilidad
+  Agente y modelo: Claude Code (Opus 5.5)
+  Commits:
+    [0006] 09c6e98 feat(carrito): carrito persistente en base de datos
+    [0007] 8e0264f feat(checkout): checkout transaccional con pago simulado
+    [0008] 33b4c1a feat(metricas): prom-client y Prometheus/Grafana/exporters en compose
+  Deploy:
+    [0006] no
+    [0007] no
+    [0008] no
+======================================================================
+
+======================================================================
+PROMPT CARD 04
+======================================================================
+Título del Prompt: Tienda conectada a la API propia e instrumentación con GA4
+Versión: v0.4 – 14/11/2026
+Autor: Rodrigo Donoso y Wladimir Gallardo
+----------------------------------------------------------------------
+OBJETIVO
+  Que el frontend React consuma la API propia (sin Supabase) y
+  enviar a Google Analytics 4 los eventos de comercio electrónico y las
+  Web Vitals, con la dimensión escenario_prueba para comparar sin carga y
+  bajo carga.
+----------------------------------------------------------------------
+PROMPT BASE
+  (texto completo de cada prompt, tal como se usó)
+
+  [0009] 14-11-26 17:14 – Rodrigo – Claude Code (Opus 5.5)
+    Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+    estado en 5 viñetas como indica AGENTS.md.
+
+    Contexto: Subligol tiene ya su API propia (Node.js + Express 5 +
+    PostgreSQL 16 en Docker, carpeta backend/), terminada en los commits 1 a
+    7: catálogo, auth argon2 + JWT, carrito persistente, checkout con pago
+    simulado, órdenes y métricas. El frontend (React 18 + Vite, JavaScript,
+    en src/) todavía consulta Supabase directamente. Lee los archivos de
+    backend/src/rutas/ para conocer los contratos exactos de la API.
+
+    Tarea: commit 8, la tienda del frontend consume la API propia y se quita
+    Supabase.
+
+    1. Cliente HTTP (src/services/api.js reescrito):
+       - Base: VITE_API_URL o, si no está definida, '/api' (mismo origen).
+         Proxy en vite.config.js: /api → http://localhost:3000.
+       - Agrega "Authorization: Bearer <token>" si hay sesión y
+         "X-Carrito-Id" si hay carrito anónimo (ambos en localStorage).
+         Guarda el X-Carrito-Id que devuelva la API.
+       - Los errores se lanzan como un ErrorApi con status, mensaje y los
+         campos extra (por ejemplo stock_disponible o la lista productos del
+         409 del checkout). Un 401 con sesión cierra la sesión local.
+       - Mantén los NOMBRES de las funciones que usan las vistas de la
+         tienda, para tocar lo mínimo las vistas.
+    2. Mapeo de la tienda:
+       - Home → GET /api/home. Categorías → GET /api/categorias (los ids
+         ahora son UUID).
+       - Catálogo → GET /api/productos con filtros y paginación del SERVIDOR
+         (hoy CatalogStoreView pagina en el navegador con slice; cámbialo
+         para usar pagina, limite y totalPaginas). Con texto de búsqueda →
+         GET /api/buscar.
+       - Detalle → GET /api/productos/:id (ya trae relacionados;
+         fetchProductosRelacionados puede reutilizarlo).
+       - AuthContext → /api/auth/login, /api/auth/registro y /api/auth/yo
+         (validar la sesión al cargar la app); al iniciar sesión, si había
+         carrito anónimo, POST /api/carrito/fusionar y borrar el id anónimo.
+       - CartContext → /api/carrito: la respuesta de la API es la fuente de
+         verdad. Muestra el mensaje del 409 (stock_disponible) al usuario.
+         Conserva los eventos GA4 add_to_cart y remove_from_cart.
+       - Checkout → POST /api/checkout con medio_pago "mock" y los campos de
+         despacho que valida el backend (nombre, apellido, telefono, region,
+         comuna, direccion, depto opcional). Si no hay sesión, abrir el
+         AuthModal. Si responde 409, mostrar qué productos no alcanzan.
+         Adapta trackPurchase a la orden que devuelve la API (transaction_id
+         = codigo; items con precio_unitario).
+       - OrderSuccess → GET /api/ordenes/:id. Mis pedidos → GET /api/ordenes.
+    3. WebpaySandboxModal: hoy imita la interfaz y los sellos de Transbank
+       ("Transbank Webpay Plus Oficial"), pero no llama a Transbank.
+       Reetiquétalo como "Pago simulado – entorno de pruebas", sin logos ni
+       textos que lo presenten como Webpay oficial, y que envíe medio_pago
+       "mock". La integración con el sandbox real será otro commit.
+    4. Panel de administración (/admin): sus endpoints son el commit 9.
+       Propón cómo dejarlo mientras tanto (por ejemplo: las funciones de admin
+       lanzan un ErrorApi claro y AdminApp muestra un aviso "Panel en
+       migración"), sin romper el build. Reemplaza la verificación
+       isSupabaseConfigured por: usuario con sesión y rol admin.
+    5. Quitar Supabase: dependencia @supabase/supabase-js, src/services/
+       supabase.js, la pantalla de credenciales de ConfigView, el chunk
+       vendor-supabase de vite.config.js, VITE_SUPABASE_* de .env.example y
+       el respaldo con src/services/mockData.js (verifica con grep que nada
+       lo use antes de borrarlo). Conserva VITE_GA_MEASUREMENT_ID.
+    6. Tests del frontend: Vitest en la raíz con entorno node para
+       src/services/ (fetch simulado): URL base, cabeceras Authorization y
+       X-Carrito-Id, guardado del id anónimo, ErrorApi con status y detalle,
+       y cierre de sesión ante 401. El script "test" de la raíz debe correr
+       los tests del backend y los del frontend.
+
+    Requisitos: no cambies el backend salvo que encuentres un bug (en ese
+    caso explícamelo antes); documenta en español neutro; no agregues GA4
+    nuevo (es otro commit).
+
+    Antes de escribir código, explícame el plan (archivos a crear, modificar
+    y borrar; cómo queda el panel de admin; dependencias que agregas o
+    quitas con versión) y espera mi confirmación. Al terminar: npm test,
+    npm run build, docker compose up -d --build, npm run dev, y prueba en el
+    navegador el flujo completo: home → catálogo con filtros y paginación →
+    búsqueda → detalle → agregar al carrito sin sesión → login (fusión del
+    carrito) → checkout → orden → mis pedidos, además de un 409 por stock.
+    Revisa también que en la consola no queden llamadas a supabase.co.
+    Luego pregúntame si registro el prompt en LogFile.txt (si se registra:
+    INTEGRANTE con el nombre real, no el usuario de Git, y el hash del
+    commit en COMMIT), si hago commit (refactor(frontend): consumir la API
+    propia y quitar Supabase) y si hago deploy.
+
+    (Respuesta al plan: "1. extiende api/buscar y el punto 2 hazlo" =
+    extender /api/buscar con los filtros del catálogo y quitar RUT y notas
+    del checkout.)
+
+  [0010] 14-11-26 19:25 – Wladimir – Claude Code (Opus 5.5)
+    Explícame el diseño de la integración con Google Analytics 4 y
+    aplícalo en este PC. Confirmo: respaldo de Web Vitals en la API
+    (/api/vitals → Prometheus), escenario_prueba tomado de la URL
+    (?escenario=) y tipo_cliente (invitado o registrado) en el evento
+    purchase. Después de probarlo no aparecía nada en DebugView: revisa
+    que debug_mode esté configurado.
+
+----------------------------------------------------------------------
+VARIABLES / PLACEHOLDERS
+  {mapeo} → vista del frontend → endpoint de la API
+  {escenario} → valor de ?escenario= que se envía como escenario_prueba
+  {eventos} → eventos GA4 de e-commerce que se registran
+  {flujo_prueba} → recorrido que se prueba en el navegador
+----------------------------------------------------------------------
+EJEMPLO DE ENTRADA
+  "Tarea: commit 8, la tienda del frontend consume la API propia y se
+  quita Supabase" con el mapeo de cada vista; luego el diseño de GA4 con
+  respaldo de Web Vitals en /api/vitals.
+----------------------------------------------------------------------
+EJEMPLO DE SALIDA ESPERADA
+  Plan de archivos a crear, modificar y borrar; código, tests del
+  frontend, build sin @supabase y eventos visibles en DebugView.
+
+  Salida obtenida (resumen de lo generado):
+
+  [0009]
+    - Frontend: api.js reescrito (ErrorApi, pedir(), base VITE_API_URL o
+      /api, cabeceras Authorization y X-Carrito-Id, 401 con sesión cierra la
+      sesión local, funciones de la tienda con los mismos nombres; las de
+      admin rechazan con ErrorApi 501 "en migración"); sesion.js
+      (localStorage con try/catch y alCerrarSesion). AuthContext con
+      /api/auth (yo al cargar, fusión del carrito anónimo antes de fijar el
+      usuario). CartContext con /api/carrito como fuente de verdad y aviso
+      del 409 (AvisoTienda). Home con /api/home; catálogo con paginación del
+      servidor (12 por página, páginas con "…", búsqueda con espera de 300 ms
+      desde 2 caracteres, orden "relevancia" al buscar, tope de precio
+      "sin límite" porque el de 25000 ocultaba productos de hasta 28690);
+      detalle con relacionados de la misma respuesta y null ante 404;
+      checkout con medio_pago "mock", sin RUT ni notas, correo de la cuenta
+      en solo lectura, lista de faltantes ante 409; OrderSuccess y Mis
+      pedidos (paginado) con /api/ordenes; trackPurchase con transaction_id =
+      codigo. PagoSimuladoModal reemplaza a WebpaySandboxModal (sin marcas
+      de Transbank ni datos de tarjeta). AdminApp: sesión + rol admin, aviso
+      "Panel en migración" (PANEL_API_DISPONIBLE = false); ConfigView muestra
+      /api/salud.
+    - Backend (aprobado): /api/buscar acepta temporada, precio_min,
+      precio_max, en_stock y orden (relevancia por defecto + órdenes del
+      catálogo); leerFiltros y NOMBRES_ORDEN exportados desde
+      rutas/productos.js.
+    - Borrados: src/services/{supabase,mockData}.js,
+      src/components/store/WebpaySandboxModal.jsx; chunk vendor-supabase;
+      VITE_SUPABASE_* (VITE_API_URL nueva en .env.example). README "Estado
+      actual" actualizado.
+    - Dependencias: se quita @supabase/supabase-js; se agrega vitest 5.1.0
+      (dev, raíz). En backend/, npm ci para instalar prom-client del commit 7.
+    - Tests: backend 266 OK (7 nuevos de /api/buscar; el mensaje del commit
+      dice 5 por error); frontend 25 OK (src/services/api.test.js). npm test
+      de la raíz corre ambos.
+    - Build: npm run build OK (sin @supabase en el bundle). docker compose
+      up -d --build: node-exporter falla en Docker Desktop para Windows
+      (rslave); se levantó con docker compose up -d api. El grupo confirmó
+      que en Linux funciona, sin cambios. npm run dev en el puerto 5174.
+    - Verificación: no había herramientas de navegador en la sesión; el
+      flujo se probó por HTTP a través del proxy de Vite con las mismas
+      llamadas que api.js (home, catálogo filtrado y paginado, búsqueda
+      extendida, detalle y 404, carrito anónimo, login y fusión, checkout
+      SUB-2026-500002, orden, mis pedidos, 409 del carrito con
+      stock_disponible, 409 del checkout con la lista y 401 con token
+      alterado). Pendiente: revisar la interfaz y la consola en el navegador.
+
+  [0010]
+    - Diseño: src/services/analytics.js reescrito. Sin ID no se carga
+      GA4 (se quitó el ID falso G-SUBLIGOLUTEM); debug_mode en desarrollo
+      o con VITE_GA_DEBUG=true; page_view manual (desactivar en GA4 los
+      cambios de página por historial); escenario_prueba desde ?escenario=
+      con gtag('set') para todos los eventos; initGA antes del primer
+      render (main.jsx). Eventos nuevos: view_item_list, search,
+      view_cart, add_shipping_info, add_payment_info, login y sign_up;
+      purchase con tipo_cliente; web_vitals con metric_name,
+      metric_value (CLS ×1000), metric_rating, metric_id y
+      escenario_prueba. Sin datos personales en los eventos.
+    - Respaldo: POST /api/vitals (sendBeacon) → histogramas
+      api_web_vitals_segundos, api_web_vitals_cls y contador
+      api_web_vitals_total; métrica, página, escenario y calificación con
+      listas fijas (400 si no). Dashboard de Grafana con la fila
+      "Experiencia de usuario" (p75 por escenario; 30 paneles en total).
+    - DebugView: debug_mode sí se envía en desarrollo; la causa era un
+      servidor de Vite iniciado antes de agregar VITE_GA_MEASUREMENT_ID
+      al .env (Vite lee el .env solo al arrancar). Se agrega un mensaje en
+      la consola con el ID y el estado de debug_mode, y un aviso si un
+      bloqueador impide cargar gtag.js.
+    - Archivos nuevos: backend/src/rutas/vitals.js,
+      backend/tests/vitals.test.js, src/services/analytics.test.js.
+      Modificados: backend/src/{app,metricas}.js, src/main.jsx,
+      src/App.jsx, src/context/{AuthContext,CartContext}.jsx, vistas
+      Home, Catálogo, Carrito y Checkout, .env.example,
+      infra/grafana/dashboards/subligol.json.
+    - Instalaciones: ninguna.
+    - Tests: backend 295 OK (14 nuevos); frontend 61 OK (25 nuevos).
+    - Build: npm run build OK; /api/vitals recibió 600 mediciones
+      sintéticas (204) y los 6 paneles nuevos devolvieron datos.
+
+----------------------------------------------------------------------
+GUÍAS DE ESTILO
+  Tono: técnico
+  Formato: secciones numeradas por área
+  Longitud: ~85 líneas (frontend) y ~6 líneas (GA4, sobre un diseño ya explicado)
+----------------------------------------------------------------------
+CASOS DE PRUEBA
+  Caso 1: Respuesta 401 con sesión iniciada → se cierra la sesión local
+  Caso 2: Login con carrito anónimo → fusión del carrito antes de fijar el usuario
+  Caso 3: Visita con ?escenario=normal → eventos GA4 con escenario_prueba = normal
+  Caso 4: POST /api/vitals con métrica fuera de la lista → 400
+----------------------------------------------------------------------
+ITERACIONES / FEEDBACK
+  Iteración 1: respuesta al plan: extender /api/buscar con los filtros del catálogo y
+               quitar RUT y notas del checkout.
+  Iteración 2: DebugView no mostraba eventos: Vite se había iniciado antes de agregar
+               VITE_GA_MEASUREMENT_ID; se agregó un mensaje en la consola con el ID
+               y el estado de debug_mode.
+  Iteración 3: node-exporter falla en Docker Desktop para Windows; en Linux funciona,
+               sin cambios.
+----------------------------------------------------------------------
+METADATOS
+  Fecha de creación: 14/11/2026
+  Última modificación: 14/11/2026
+  Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – frontend y analítica
+  Agente y modelo: Claude Code (Opus 5.5)
+  Commits:
+    [0009] df42ae9 refactor(frontend): consumir la API propia y quitar Supabase
+    [0010] cf28e76 feat(ga4): eventos de e-commerce, Web Vitals y respaldo en /api/vitals
+  Deploy:
+    [0009] no
+    [0010] no
+======================================================================
+
+======================================================================
+PROMPT CARD 05
+======================================================================
+Título del Prompt: Panel de administración sobre la API propia
+Versión: v0.5 – 14/11/2026
+Autor: Rodrigo Donoso
+----------------------------------------------------------------------
+OBJETIVO
+  Reconectar el panel /admin (inventario, categorías, compras, ventas
+  manuales, dashboard y auditoría) con endpoints protegidos por rol, sin
+  enviar tráfico interno a GA4.
+----------------------------------------------------------------------
+PROMPT BASE
+  (texto completo de cada prompt, tal como se usó)
+
+  [0011] 14-11-26 21:16 – Rodrigo – Claude Code (Opus 5.5)
+    Lee AGENTS.md y LogFile.txt y revisa `git log -n 15 --oneline`; resume el
+    estado en 5 viñetas como indica AGENTS.md.
+
+    Contexto: Subligol ya tiene su API propia (Node.js + Express 5 +
+    PostgreSQL 16 en Docker, carpeta backend/, JavaScript ESM con JSDoc) y la
+    tienda del frontend (React + Vite, src/) la consume. El panel de
+    administración (/admin) quedó desconectado: en src/services/api.js las
+    funciones de admin (createCategoria, fetchProductos, createProducto,
+    updateProducto, toggleActivoProducto, registrarCompra, registrarVenta,
+    fetchDashboardData, fetchAuditLogs, fetchHistorialCompras,
+    fetchHistorialVentas) lanzan "ADMIN_EN_MIGRACION", y AdminApp muestra
+    "Panel en migración". Piezas existentes que debes reutilizar:
+    - middlewares autenticar y requerirRol en backend/src/middlewares/auth.js
+    - enTransaccion (backend/src/db/transaccion.js), ErrorHttp con detalle
+      (backend/src/middlewares/errores.js), validaciones en
+      backend/src/validacion.js
+    - montar() en backend/src/app.js (etiqueta de ruta para las métricas)
+    - el esquema (backend/migraciones/001..004): triggers que suman stock en
+      detalle_compras y lo descuentan en detalle_ventas y auditan, CHECK de
+      stock >= 0, y las vistas vista_capital_inmovilizado,
+      vista_balance_comercial, vista_productos_stock_critico,
+      vista_ventas_por_canal y vista_historial_auditoria.
+    - el checkout (backend/src/rutas/checkout.js) como modelo de venta
+      transaccional sin sobreventa (FOR UPDATE en orden de id).
+    El seed crea admin@subligol.cl (contraseña SEED_CONTRASENA_ADMIN).
+
+    Tarea: commit 9, endpoints del panel de administración y reconexión del
+    panel.
+
+    Backend: un router /api/admin protegido COMPLETO con autenticar +
+    requerirRol('admin') (sin sesión 401, cliente 403):
+    - Productos: GET /api/admin/productos (busqueda, temporada,
+      estado = todos|activos|inactivos, paginación; incluye costo_unitario,
+      stock_minimo y activo, que la tienda no expone); POST (sku único →
+      409); PATCH /:id; PATCH /:id/activo.
+    - Categorías: GET y POST /api/admin/categorias (nombre único → 409).
+    - Compras: POST /api/admin/compras { proveedor, notas, items:
+      [{ producto_id, cantidad, costo_unitario }] }; el total se calcula en el
+      servidor; una transacción; fijar app.usuario_id para la auditoría; los
+      triggers suman stock. GET /api/admin/compras?limite con su detalle.
+    - Ventas manuales: POST /api/admin/ventas { canal_venta (Instagram,
+      WhatsApp, Presencial u Otro; "Web" queda reservado al checkout),
+      cliente_nombre, notas, items: [{ producto_id, cantidad,
+      precio_unitario opcional = precio actual }] }; bloquear productos FOR
+      UPDATE en orden de id; 409 con la lista si falta stock y sin cambios;
+      total en el servidor. GET /api/admin/ventas?limite con su detalle.
+    - GET /api/admin/dashboard: las 4 vistas del dashboard en una respuesta.
+    - GET /api/admin/auditoria?limite (máximo 500) desde
+      vista_historial_auditoria.
+    - Los numeric de PostgreSQL deben salir como número. Solo consultas
+      parametrizadas. Validaciones con 400 en español.
+
+    Frontend:
+    - Reemplaza las funciones de admin de src/services/api.js por llamadas a
+      estos endpoints. CONSERVA sus nombres y adapta los datos a los campos
+      que esperan las vistas (revisa DashboardView, InventarioView,
+      ComprasView, VentasView, AuditoriaView, ModalProducto y
+      ModalNuevaCategoria antes de definir las respuestas).
+    - Quita el aviso "Panel en migración" de AdminApp; el panel sigue
+      exigiendo sesión con rol admin.
+    - Las rutas /admin no deben enviar eventos de GA4 (ni page_view): es
+      tráfico interno y ensuciaría los informes. Ajusta el AnalyticsTracker
+      de App.jsx y agrega un test en src/services/analytics.test.js si
+      corresponde.
+
+    Tests (Vitest + Supertest sobre subligol_test con sembrar(); los 295 del
+    backend y los 70 del frontend deben seguir pasando):
+    - 401 sin sesión y 403 con cliente en cada grupo de endpoints;
+    - productos: listar con cada filtro, crear, sku duplicado 409, editar,
+      activar/desactivar (un producto inactivo desaparece de la tienda);
+    - categorías: crear, duplicado 409;
+    - compras: suma stock, deja COMPRA_ENTRADA con el usuario admin, total
+      calculado en el servidor;
+    - ventas: descuenta stock, 409 sin cambios si falta stock, canal "Web"
+      rechazado, ventas simultáneas sin sobreventa;
+    - dashboard y auditoría: forma de la respuesta y números como número.
+
+    Antes de escribir código, explícame el diseño (archivos a crear y
+    modificar, forma de cada respuesta según lo que esperan las vistas) y
+    espera mi confirmación. Al terminar: npm test (raíz), npm run build,
+    docker compose up -d --build y prueba en el navegador con
+    admin@subligol.cl: dashboard, inventario (crear, editar, desactivar),
+    nueva categoría, registrar una compra y una venta, y auditoría; revisa
+    que la consola no tenga errores. Luego pregúntame si registro el prompt
+    en LogFile.txt (INTEGRANTE con el nombre real, no el usuario de Git, y
+    el hash del commit en COMMIT), si hago commit (feat(admin): endpoints
+    del panel de administración) y si hago deploy.
+
+    (Respuesta al diseño:)
+    De acuerdo: inactivo y precio 0 salvo que llegue precio_venta. Agrega
+    en ComprasView un aviso de que el artículo nuevo queda inactivo hasta
+    ponerle precio y activarlo desde Inventario.
+    De acuerdo: misma definición que el dashboard (incluye agotados).
+    De acuerdo: sin migración 005 en este commit. Déjalo anotado como
+    pendiente: si se agrega, el trigger debe ser AFTER UPDATE OF las
+    columnas editables (nombre, precio_venta, costo_unitario, activo, etc.),
+    SIN stock_actual, para no auditar cada venta ni afectar las pruebas de
+    carga.
+    De acuerdo sin paginación en la interfaz, pero el seed tiene justo 500
+    productos: sube el límite del panel a 1000 y muestra un aviso"Mostrando X de Y" si total > productos recibidos, para que ninguno
+    quede oculto sin aviso.
+
+----------------------------------------------------------------------
+VARIABLES / PLACEHOLDERS
+  {piezas_existentes} → middlewares, transacciones, validaciones y vistas SQL a reutilizar
+  {endpoints} → grupos de /api/admin con sus reglas
+  {vistas} → componentes del panel cuyos campos deben respetarse
+  {respuesta_al_diseno} → decisiones del grupo sobre el diseño propuesto
+----------------------------------------------------------------------
+EJEMPLO DE ENTRADA
+  Lista de endpoints de /api/admin, vistas del panel y tests
+  requeridos; después, la respuesta del grupo al diseño propuesto.
+----------------------------------------------------------------------
+EJEMPLO DE SALIDA ESPERADA
+  Diseño con la forma de cada respuesta; router protegido, funciones
+  de admin conectadas con los mismos nombres y tests en verde.
+
+  Salida obtenida (resumen de lo generado):
+
+  [0011]
+    - Backend: backend/src/rutas/admin.js (router /api/admin con
+      autenticar + requerirRol('admin') al inicio: sin sesión 401, cliente
+      403, también en rutas inexistentes) y backend/src/consultas/admin.js
+      (SQL parametrizado; numeric::float8 y conteos ::int).
+      - Productos: GET con busqueda (nombre o SKU, comodines escapados),
+        temporada, estado todos|activos|inactivos|critico|agotado ("critico"
+        = misma definición que vista_productos_stock_critico, incluye
+        agotados), pagina y limite (50 por defecto, máximo 1000); POST
+        (stock inicial opcional; SKU repetido 409; categoría inexistente
+        400); PATCH /:id parcial (stock_actual → 400); PATCH /:id/activo.
+      - Categorías: GET con cantidad_productos y cantidad_activos; POST
+        (nombre repetido 409).
+      - Compras: total en centavos en el servidor (el total del cliente se
+        ignora), una transacción con app.usuario_id; items es_nuevo crean el
+        producto inactivo y con precio 0 salvo que llegue precio_venta; GET
+        ?limite (15 por defecto, máximo 100) con detalles.
+      - Ventas manuales: canal Instagram|WhatsApp|Presencial|Otro ("Web"
+        400); FOR UPDATE en orden de id; 409 con la lista sin cambios;
+        precio por defecto = precio actual; reutiliza insertarDetalle del
+        checkout; GET ?limite con detalles (todos los canales).
+      - GET /dashboard (4 vistas en paralelo) y GET /auditoria (100 por
+        defecto, máximo 500).
+      - validacion.js: campoTextoOpcional, campoNumero (máx. 2 decimales),
+        campoBooleano y campoLista. app.js monta /api/admin.
+    - Frontend: api.js con las 11 funciones de admin conectadas (mismos
+      nombres; fetchProductos devuelve el arreglo, nueva
+      fetchProductosPaginados con total; "archivados" → "inactivos"; números
+      convertidos; no se envía el total). AdminApp sin "Panel en migración"
+      (pestaña inicial dashboard) y recarga las categorías al crear una.
+      InventarioView con aviso "Mostrando X de Y" y error de carga visible.
+      ComprasView con aviso de artículo nuevo inactivo y mensaje de éxito
+      según los productos creados. VentasView sin canal Web.
+    - GA4: esRutaInterna en analytics.js; en /admin no se envía ningún
+      evento (tampoco login) ni Web Vitals (GA4 ni /api/vitals);
+      AnalyticsTracker no llama a trackPageView en /admin.
+    - Pendiente anotado (rutas/admin.js y README): migración 005 con trigger
+      AFTER UPDATE OF las columnas editables, sin stock_actual; paginación
+      del inventario en la interfaz.
+    - Archivos nuevos: backend/src/{rutas,consultas}/admin.js,
+      backend/tests/admin-{acceso,productos,compras,ventas,reportes}.test.js,
+      backend/tests/ayudantes-admin.js. Modificados: backend/src/app.js,
+      backend/src/validacion.js, backend/tests/validacion.test.js,
+      src/App.jsx, src/services/{api,analytics}.js y sus tests, vistas
+      AdminApp, Inventario, Compras y Ventas, README.md.
+    - Instalaciones: ninguna.
+    - Tests: backend 368 OK (73 nuevos, incluye 10 ventas simultáneas sobre
+      stock 3 → exactamente 3 registradas, y ventas cruzadas sin deadlock);
+      frontend 84 OK (15 nuevos; se reemplazó el test del 501).
+    - Build: npm run build OK. docker compose up -d --build api (node-exporter
+      sigue fallando en Docker Desktop para Windows). npm run dev en el
+      puerto 5175.
+    - Verificación: no había herramientas de navegador en la sesión; el
+      flujo se probó por HTTP a través del proxy de Vite con las mismas
+      llamadas que api.js (401/403, login admin, dashboard, inventario 500
+      de 500, crítico 37 = dashboard, categoría y duplicada 409, crear,
+      SKU duplicado 409, editar, desactivar → 404 en la tienda, reactivar,
+      compra con artículo nuevo inactivo, venta, 409 sin stock, Web 400,
+      stock final esperado, historiales y auditoría a nombre del admin).
+      Pendiente: revisar la interfaz y la consola en el navegador.
+
+----------------------------------------------------------------------
+GUÍAS DE ESTILO
+  Tono: técnico
+  Formato: backend, frontend y tests en secciones
+  Longitud: ~100 líneas
+----------------------------------------------------------------------
+CASOS DE PRUEBA
+  Caso 1: Cualquier ruta /api/admin sin sesión / con cliente → 401 / 403
+  Caso 2: 10 ventas simultáneas sobre stock 3 → exactamente 3 registradas
+  Caso 3: Venta manual con canal "Web" → 400
+  Caso 4: Navegar /admin → ningún evento GA4 ni Web Vitals
+----------------------------------------------------------------------
+ITERACIONES / FEEDBACK
+  Iteración 1: artículo nuevo de una compra queda inactivo y con precio 0, con aviso en
+               ComprasView.
+  Iteración 2: límite del panel subido a 1000 y aviso "Mostrando X de Y" porque el seed
+               tiene justo 500 productos.
+  Iteración 3: migración de auditoría de ediciones anotada como pendiente (trigger sin
+               stock_actual para no afectar las pruebas de carga).
+----------------------------------------------------------------------
+METADATOS
+  Fecha de creación: 14/11/2026
+  Última modificación: 14/11/2026
+  Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – administración
+  Agente y modelo: Claude Code (Opus 5.5)
+  Commits:
+    [0011] 14f7c3e feat(admin): endpoints del panel de administración
+  Deploy:
+    [0011] no
+======================================================================
+
+======================================================================
+PROMPT CARD 06
+======================================================================
+Título del Prompt: Generadores de carga con k6 y ejecución de las pruebas
+Versión: v1.0 – 15/11/2026
+Autor: Wladimir Gallardo
+----------------------------------------------------------------------
+OBJETIVO
+  Diseñar y construir generadores de carga que simulen usuarios
+  concurrentes (perfiles, escenarios y navegador real), definir el
+  protocolo de ejecución y documentación, y ejecutar y analizar las
+  pruebas contra la VM con 3 repeticiones por escenario.
+----------------------------------------------------------------------
+PROMPT BASE
+  (texto completo de cada prompt, tal como se usó)
+
+  [0012] 15-11-26 00:13 – Wladimir – Claude Code (Opus 5.5)
+    Vamos con la Fase 1.2 (k6). Confirmo el diseño: el comprador inicia
+    sesión y además puede comprar como invitado; incluir el navegador real
+    en paralelo y el envío de las métricas de k6 a Prometheus. No ejecutes
+    pruebas contra la VM todavía: antes explícame cómo hacerlas y cómo
+    documentarlas, para completar lo que pide el informe sobre las cargas
+    (diseñar y construir generadores de carga que simulen usuarios
+    concurrentes, definir e interpretar indicadores de desempeño y analizar
+    el comportamiento).
+
+  [0013] 15-11-26 00:33 – Wladimir – Claude Code (Opus 5.5)
+    Ya hice la prueba piloto contra la VM: revísala y dime qué piensas.
+    Mantén los resultados en una carpeta por escenario y vamos con la
+    siguiente prueba. Después de cada ejecución (baja R1, R2, R3 y normal
+    R1, R2, R3) revisa los resultados y dame el comando de la siguiente.
+
+----------------------------------------------------------------------
+VARIABLES / PLACEHOLDERS
+  {escenario} → humo, piloto, baja, normal o estres
+  {repeticion} → R1, R2 o R3
+  {resultados} → archivos de la ejecución (HTML, JSON, CSV, meta) a revisar
+----------------------------------------------------------------------
+EJEMPLO DE ENTRADA
+  "Ya hice la prueba piloto contra la VM: revísala y dime qué piensas"
+  con los archivos generados por carga/ejecutar.sh.
+----------------------------------------------------------------------
+EJEMPLO DE SALIDA ESPERADA
+  Revisión de cada ejecución (percentiles, errores, umbrales), ajuste
+  de la calibración y el comando de la siguiente prueba.
+
+  Salida obtenida (resumen de lo generado):
+
+  [0012]
+    - Diseño: carga/k6/escenarios.js con 4 perfiles (navegante 50 %,
+      buscador 25 %, abandono 15 %, comprador 10 % con login o invitado vía
+      PROPORCION_INVITADO), think time, etiqueta pagina por petición,
+      escenarios humo, piloto, baja, normal y estres (ramping-arrival-rate
+      con mesetas 20/50/100/150 sesiones/s), calentamiento de 1 min
+      excluido, umbrales SLO y métricas propias (duracion_checkout,
+      compras_ok/sin_stock/carrito_vacio). carga/k6/navegador-real.js
+      (k6/browser): Web Vitals e INP bajo carga con ?escenario=.
+      carga/ejecutar.sh aplica el protocolo 6.3.1 (meta con commit y horas,
+      HTML, resumen JSON, CSV crudo, CPU del generador; opcional resembrar,
+      navegador real y remote write a Prometheus por túnel SSH).
+      carga/tabla-resumen.mjs genera tablas para el informe. Fila
+      "Generador (k6)" en Grafana (36 paneles). Guía carga/README.md (cómo
+      ejecutar, dónde ver y cómo documentar) y carga/bitacora.md (tablas
+      6.2, 6.3 y 6.4). Se elimina load_tests/.
+    - Archivos: carga/{README.md,bitacora.md,ejecutar.sh,tabla-resumen.mjs},
+      carga/k6/{escenarios.js,navegador-real.js},
+      infra/grafana/dashboards/subligol.json, README.md, AGENTS.md,
+      .gitignore, .dockerignore; load_tests/ eliminado.
+    - Instalaciones: ninguna (k6 v2.4.0 y Chrome ya instalados).
+    - Tests: 4 perfiles por separado y ensayo completo del protocolo
+      (piloto 4 min con navegador real y Prometheus) contra Docker local:
+      0 % errores, umbrales cumplidos, Web Vitals en Prometheus, paneles de
+      k6 con datos. Corregidos: PERFIL inválido en bucle, selector
+      :has-text no soportado, percentiles por página en el resumen,
+      etiqueta escenario en k6 v2, unidad del panel de checkout y vmstat
+      en formato estándar. No se ejecutó carga contra la VM.
+
+  [0013]
+    - Calibración con la piloto (R02): p95 17 ms, 0 % errores; capacidad
+      estimada con la ley de utilización ≈ 22 sesiones/s, por lo que los
+      escalones del estrés se recalibran.
+    - carga/ejecutar.sh guarda por escenario:
+      carga/resultados/<ESCENARIO>/<escenario>_<AAAA-MM-DD>_<HHMM>.*
+      (HUMO, PILOTO, BAJA, NORMAL, ESTRES).
+    - carga/tabla-repeticiones.mjs: junta R1..Rn de un escenario y entrega
+      promedio [mín–máx] de cada percentil por página (guía 6.4.1), más
+      indicadores globales y Web Vitals del navegador real.
+    - Resultados contra la VM: baja R1–R3 (p95 global 18,5 ms [17,5–20,0])
+      y normal R1–R3 (p95 17,5 ms [16,9–18,1]; R3 ejecutada 7 h después con
+      los mismos resultados), 0 % errores y umbrales cumplidos. Little:
+      N = X·(R+Z) ≈ 5 VUs en baja y ≈ 30 en normal. Con la normal se estima
+      ≈ 37 sesiones/s de capacidad → escalones del estrés 10…60 ses/s.
+    - carga/bitacora.md (R01–R08) y RESUMEN.md de BAJA y NORMAL.
+    - Archivos: carga/{ejecutar.sh,tabla-repeticiones.mjs,bitacora.md,
+      README.md}, carga/resultados/{HUMO,PILOTO,BAJA,NORMAL}/, README.md,
+      AGENTS.md, .gitignore (registro de CPU del generador versionado).
+    - Instalaciones: ninguna. Tests: no aplica (análisis de resultados).
+
+----------------------------------------------------------------------
+GUÍAS DE ESTILO
+  Tono: técnico y analítico
+  Formato: párrafos cortos y viñetas
+  Longitud: prompts de 5 a 8 líneas
+----------------------------------------------------------------------
+CASOS DE PRUEBA
+  Caso 1: Piloto contra la VM → p95 17 ms, 0 % errores, capacidad estimada ≈ 22 sesiones/s
+  Caso 2: Baja R1–R3 → p95 18,5 ms [17,5–20,0], 0 % errores
+  Caso 3: Normal R1–R3 → p95 17,5 ms [16,9–18,1]; nueva estimación ≈ 37 sesiones/s
+----------------------------------------------------------------------
+ITERACIONES / FEEDBACK
+  Iteración 1: correcciones del ensayo local: PERFIL inválido en bucle, selector
+               :has-text no soportado, etiqueta escenario en k6 v2 y percentiles por
+               página.
+  Iteración 2: con la piloto y la normal se recalibraron los escalones del estrés a
+               10…60 sesiones/s.
+----------------------------------------------------------------------
+METADATOS
+  Fecha de creación: 15/11/2026
+  Última modificación: 15/11/2026
+  Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – pruebas de carga
+  Agente y modelo: Claude Code (Opus 5.5)
+  Commits:
+    [0012] 1830e2f feat(carga): generadores k6 con perfiles, escenarios, navegador real y protocolo de ejecución
+    [0013] c4cbbd6 feat(carga): resultados de humo, piloto y baja (3 repeticiones) y tabla agregada
+        (normal R1–R3 en 707a04d)
+  Deploy:
+    [0012] sí (git pull en la VM; Grafana con 36 paneles, 15-11-26 00:20)
+    [0013] no (sin cambios en la aplicación)
+======================================================================

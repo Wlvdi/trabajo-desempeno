@@ -25,16 +25,20 @@ carga (k6), observabilidad (Prometheus/Grafana) y análisis estadístico
 de desempeño.
 
 ## 4. Reglas obligatorias
-1. Registro en LogFile.txt SOLO de prompts significativos. Es
+1. Registro en PromptCard.txt SOLO de prompts significativos. Es
    significativo si: define o cambia arquitectura/stack, agrega o
    modifica una funcionalidad completa, toca GA4/k6/observabilidad,
    decide un diseño importante, o corrige un bug relevante.
    NO registrar: dudas rápidas, ajustes de estilo, typos, aclaraciones,
    reintentos del mismo prompt.
-   Cada entrada: ID, fecha y hora (America/Santiago), prompt COMPLETO,
-   resumen de lo generado (archivos, instalaciones, tests) y modelo usado.
+   Formato Prompt Card, una tarjeta por versión del software: título,
+   versión, autor, objetivo, Prompt Base (cada prompt COMPLETO con su
+   número, fecha y hora America/Santiago, integrante y modelo),
+   variables, ejemplo de entrada y de salida (con el resumen de lo
+   generado: archivos, instalaciones, tests), guías de estilo, casos de
+   prueba, iteraciones/feedback y metadatos (commits y deploy).
 2. Si dudas si un prompt es significativo, pregúntame en una línea.
-3. Al iniciar sesión: lee LogFile.txt y `git log -n 15 --oneline`
+3. Al iniciar sesión: lee PromptCard.txt y `git log -n 15 --oneline`
    y resume el estado en 5 viñetas antes de hacer nada.
 4. Antes de implementar: explica qué harás y en qué archivos.
    NO modifiques código hasta recibir confirmación explícita.
@@ -48,8 +52,8 @@ de desempeño.
    proponer arreglos.
 10. Toda cifra que me entregues debe poder salir de un reporte o script
     reproducible; no inventes datos.
-11. En LogFile.txt, INTEGRANTE es el nombre real de quien escribió el
-    prompt (no el usuario de Git) y COMMIT lleva el hash y el mensaje.
+11. En PromptCard.txt, el integrante es el nombre real de quien escribió el
+    prompt (no el usuario de Git) y cada commit lleva el hash y el mensaje.
 
 ## 5. Uso de modelos
 - Claude Opus 5.5 → arquitectura, análisis de resultados, depuración compleja.

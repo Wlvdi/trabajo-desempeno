@@ -181,9 +181,12 @@ Todo el desarrollo se hizo con \textbf{Claude Code} (modelo \textbf{Claude Opus
 5.5}). Siguiendo el enunciado, el primer prompt configuró \codigo{AGENTS.md}
 (contexto del proyecto, español neutro, explicar antes de implementar y esperar
 confirmación, preguntar por commit y deploy, testing automático y compilar antes
-de terminar) y el archivo \codigo{LogFile.txt}, donde se registraron
-\textbf{17 prompts significativos} (12 de Wladimir y 5 de Rodrigo) con fecha,
-prompt, resumen de lo generado, modelo, commit y deploy.
+de terminar) y el archivo \codigo{PromptCard.txt}, donde se registraron
+\textbf{13 prompts significativos} (8 de Wladimir y 5 de Rodrigo) en formato
+\emph{Prompt Card}: una tarjeta por versión del software (6 versiones, de la
+configuración inicial a las pruebas de carga) con objetivo, prompts completos
+con fecha y modelo, variables, salida obtenida, casos de prueba, iteraciones,
+commits y deploy.
 
 \paragraph{Distribución del trabajo.} Leonardo Solís construyó la primera
 versión de la tienda (frontend React con catálogo, carrito y panel de
@@ -192,10 +195,10 @@ medición: API propia y base de datos, instrumentación GA4, carrito persistente
 checkout transaccional y Webpay en ambiente de integración. Wladimir además
 diseñó y ejecutó las pruebas de carga y el monitoreo con Prometheus y Grafana.
 
-Ejemplos representativos: diseño del backend y de las migraciones (0002--0007),
-instrumentación GA4 y Web Vitals (0010), deploy con HTTPS (0013), generadores k6
-y protocolo de ejecución (0014), análisis de las pruebas (0015--0016) e
-integración de Webpay (0017).
+Ejemplos representativos: diseño del backend y de las migraciones (0002--0007,
+tarjetas 02 y 03), instrumentación GA4 y Web Vitals (0010, tarjeta 04),
+generadores k6 y protocolo de ejecución (0012) y análisis de las pruebas (0013),
+ambos en la tarjeta 06.
 
 \paragraph{Lecciones aprendidas.}
 \begin{itemize}
@@ -204,7 +207,7 @@ integración de Webpay (0017).
         primer estrés eran del generador (límite de conexiones de la red
         doméstica) y no del servidor, y que DebugView de GA4 no mostraba eventos
         por una opción de Tag Manager.
-  \item El control de versiones y el LogFile permitieron retomar el contexto
+  \item El control de versiones y las Prompt Cards permitieron retomar el contexto
         entre sesiones y entre integrantes que trabajaron en otros equipos.
   \item \textbf{Leonardo Solís (sitio web):} construir primero la interfaz y
         después conectarla a una API propia obligó a reescribir el acceso a
@@ -490,21 +493,31 @@ Ofrecido & Logrado & Logrado & p50 & p95 & p99 & Error & CPU VM & CPU api / db \
 
 \begin{table}[H]
 \centering\small
-\begin{tabular}{@{}lrrr@{}}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-Indicador & Carga baja & Carga normal & Estrés \\
+Indicador & Sin carga (real) & Carga baja & Carga normal & Estrés \\
 \midrule
-TTFB p75 (ms) & 14 [10--22] & 20 [16--23] & 19 [14--23] \\
-LCP p75 (s)   & 0,172 [0,166--0,176] & 0,173 [0,172--0,173] & 0,200 [0,188--0,208] \\
-INP p75 (ms)  & 5 [4--8] & 1 [0--4] & 3 [0--8] \\
-CLS p75       & 0,005 & 0,005 & 0,004 \\
-Tasa de rebote GA4 (\%) & \pendiente{GA4} & \pendiente{GA4} & \pendiente{GA4} \\
-Duración media de sesión GA4 (s) & \pendiente{GA4} & \pendiente{GA4} & \pendiente{GA4} \\
-Conversión vitrina $\rightarrow$ compra (\%) & \pendiente{GA4} & \pendiente{GA4} & \pendiente{GA4} \\
+TTFB p75 (ms) & -- & 14 [10--22] & 20 [16--23] & 19 [14--23] \\
+LCP p75 (s)   & -- & 0,172 [0,166--0,176] & 0,173 [0,172--0,173] & 0,200 [0,188--0,208] \\
+INP p75 (ms)  & -- & 5 [4--8] & 1 [0--4] & 3 [0--8] \\
+CLS p75       & -- & 0,005 & 0,005 & 0,004 \\
+\midrule
+Sesiones GA4                       & 17      & 98  & 186 & 159 \\
+Tasa de rebote GA4 (\%)            & 23,53   & 0   & 0   & 1,26 \\
+Tasa de interacción GA4 (\%)       & 76,47   & 100 & 100 & 98,74 \\
+Duración media de sesión GA4 (s)   & 931     & 14  & 14  & 13 \\
+Tiempo de interacción medio (s)    & 114     & 3   & 3   & 3 \\
+Vistas por sesión GA4              & 24,65   & 4   & 4   & 4 \\
+\midrule
+Conversión sesión $\rightarrow$ compra, k6 (\%) & -- & 9,5 [8,7--10,1] & 9,5 [8,9--10,0] & 9,4 [9,4--9,5] \\
 \bottomrule
-\end{tabular}
-\caption{Indicadores de experiencia de usuario (guía, tabla 6.4). Web Vitals:
-promedio [mín--máx] de 3 repeticiones.}
+\end{tabular}}
+\caption{Indicadores de experiencia de usuario (guía, tabla 6.4). Web Vitals y
+conversión: promedio [mín--máx] de 3 repeticiones. GA4: exploración de formato
+libre con un segmento por valor de \codigo{escenario\_prueba} (total de las
+repeticiones). «Sin carga (real)»: visitas de los integrantes, sin
+\codigo{escenario\_prueba}.}
 \end{table}
 
 Todas las Web Vitals quedan dentro del rango «bueno» de Google en los tres
@@ -521,13 +534,34 @@ navegación cortada a los 30~s y un LCP máximo de 137~s (R1), que el p75 no ref
 $\rightarrow$ carrito $\rightarrow$ inicio de pago $\rightarrow$ compra.}
 \end{figure}
 
-\pendiente{comparación de rebote, duración de sesión y embudo por
-\codigo{escenario\_prueba} (exploración con segmentos en GA4)}. En GA4 solo
-aparecen las sesiones del navegador real (6--13 por prueba), porque k6 HTTP no
-ejecuta JavaScript; además, ese navegador no compra, por lo que bajo carga el
-embudo de GA4 llega hasta el carrito. La conversión bajo carga se mide en el
-servidor: en el estrés se completaron 2\,756 compras [2\,743--2\,763] por
-repetición, sin compras fallidas por falta de stock.
+En GA4 solo aparecen las sesiones del navegador real, porque k6 HTTP no
+ejecuta JavaScript. Cada iteración del navegador es una sesión nueva, y los
+conteos coinciden con k6: 98 sesiones en carga baja (32 + 32 + 34 iteraciones)
+y 186 en carga normal (62 + 61 + 63). En el estrés GA4 registró 159 de las 165
+iteraciones (incluye la ejecución invalidada, que usó el mismo
+\codigo{escenario\_prueba}); las 6 que faltan serían navegaciones que no
+alcanzaron a enviar eventos durante la saturación.
+
+Bajo carga baja y normal ninguna sesión rebotó (100~\% de interacción, 14~s de
+duración y 4 vistas por sesión). En el estrés la tasa de rebote sube a 1,26~\%
+(2 sesiones sin interacción) y la duración baja a 13~s: aunque las páginas
+tardaron más, el navegador automatizado sigue el mismo guion, de modo que un
+rebote solo aparece cuando una navegación se corta antes de registrar
+interacción, justo lo que se observó en la saturación. El efecto es pequeño
+porque estas sesiones se reparten en todas las mesetas, la mayoría no
+saturadas.
+
+Las sesiones reales (sin carga) no son comparables en duración ni en vistas:
+son 17 sesiones de los integrantes, que recorrieron el sitio y el panel durante
+el desarrollo (15~min y 25 vistas por sesión, 23,5~\% de rebote). Sirven como
+referencia de un uso humano, no como línea base del guion.
+
+El navegador real no compra, por lo que bajo carga el embudo de GA4 llega hasta
+el carrito y la conversión se mide en el servidor (\codigo{compras\_ok} /
+sesiones de k6): se mantiene en $\sim$9,5~\% en los tres escenarios, incluso en
+el estrés, con 2\,756 compras [2\,743--2\,763] por repetición y sin compras
+fallidas por falta de stock. La saturación hace más lentas las compras, pero
+no las pierde.
 
 % -----------------------------------------------------------------------------
 \section{Cuellos de botella y propuestas de mejora}
@@ -575,7 +609,10 @@ repetición, sin compras fallidas por falta de stock.
   \item \textbf{Pausas reducidas en el estrés.} Cambian el tiempo de reflexión de
         las sesiones, no la mezcla de páginas ni la demanda por sesión.
   \item \textbf{Tamaño muestral de GA4.} Solo las sesiones del navegador real
-        llegan a GA4 bajo carga; además GA4 tarda 24--48~h en procesar los datos.
+        llegan a GA4 bajo carga (98, 186 y 159 por escenario) y siguen un
+        guion fijo, por lo que el rebote y la duración reflejan errores de
+        carga y no decisiones de usuarios; además GA4 tarda 24--48~h en
+        procesar los datos.
   \item \textbf{Capa gratuita / créditos de estudiante.} Una sola VM de 2 vCPU
         con el monitoreo en la misma máquina ($\sim$4--6~\% de un núcleo).
   \item \textbf{Pago simulado bajo carga.} Por recomendación de la guía, las
@@ -600,7 +637,10 @@ repetición, sin compras fallidas por falta de stock.
   \item La experiencia de usuario medida con Web Vitals se mantiene «buena» en
         todos los escenarios en el p75, pero las colas (p99, máximos) muestran
         que bajo saturación algunos usuarios sí esperan varios segundos.
-  \item \pendiente{conclusión sobre GA4 (rebote, duración y conversión por escenario)}
+  \item En GA4 el estrés aparece como rebotes (0~\% $\rightarrow$ 1,26~\%) y
+        sesiones algo más cortas, y la conversión medida en el servidor se
+        mantiene en $\sim$9,5~\%: bajo saturación los usuarios esperan más,
+        pero las compras no se pierden.
 \end{itemize}
 
 % -----------------------------------------------------------------------------
@@ -616,7 +656,7 @@ repetición, sin compras fallidas por falta de stock.
         \codigo{node carga/tabla-saturacion.mjs}.
   \item Ejecución de una prueba: \codigo{ESCENARIO=normal REPETICION=R1
         NAVEGADOR=1 PROMETHEUS=1 carga/ejecutar.sh}.
-  \item Registro de prompts: \codigo{LogFile.txt} (entradas 0001--0017).
+  \item Registro de prompts: \codigo{PromptCard.txt} (6 tarjetas, prompts 0001--0013).
 \end{itemize}
 
 \end{document}
