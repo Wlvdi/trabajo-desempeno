@@ -56,8 +56,10 @@ de desempeño.
     prompt (no el usuario de Git) y cada commit lleva el hash y el mensaje.
 
 ## 5. Uso de modelos
-- Claude Opus 5.5 → arquitectura, análisis de resultados, depuración compleja.
-- Claude Sonnet 5.5 → desarrollo del día a día: endpoints, frontend, tests, refactor.
+- Claude Opus 5.5 para todo el proyecto: arquitectura, desarrollo
+  (endpoints, frontend, tests), análisis de resultados y depuración.
+  Se usa un solo modelo para que la calidad de las respuestas sea pareja
+  y el registro de prompts sea comparable entre integrantes.
 
 
 ## 6. Comandos

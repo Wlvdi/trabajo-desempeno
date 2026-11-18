@@ -12,8 +12,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[spanish,es-tabla,es-nodecimaldot]{babel}
-\usepackage{lmodern}
-\usepackage[margin=2.3cm]{geometry}
+\usepackage{newpxtext}               % texto: Palatino
+\usepackage{newpxmath}               % matemáticas a juego
+\usepackage{lastpage}
+\usepackage[margin=2.3cm,top=2.8cm]{geometry}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{tabularx}
@@ -21,64 +23,129 @@
 \usepackage{float}
 \usepackage{caption}
 \usepackage{subcaption}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{enumitem}
+\usepackage{etoolbox}
+\usepackage{needspace}
 \usepackage{tikz}
 \usetikzlibrary{positioning,fit,arrows.meta}
+\usepackage[most]{tcolorbox}
 \usepackage{titlesec}
+\usepackage{titletoc}
 \usepackage{fancyhdr}
 \usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
 
-% Colores tomados del logo UTEM (Manual de Identidad Visual)
+% --- Colores (Manual de Identidad Visual UTEM) --------------------------------
 \definecolor{azulutem}{RGB}{0,78,170}
 \definecolor{verdeutem}{RGB}{120,191,38}
-\titleformat{\section}{\Large\bfseries\color{azulutem}}{\thesection.}{0.6em}{}[{\color{verdeutem}\titlerule[1.2pt]}]
-\titleformat{\subsection}{\large\bfseries\color{azulutem}}{\thesubsection.}{0.6em}{}
+\definecolor{azulclaro}{RGB}{232,240,250}
+\definecolor{verdeclaro}{RGB}{241,248,232}
+\definecolor{grisfila}{RGB}{244,246,249}
+\definecolor{gristexto}{RGB}{90,98,110}
+
+% --- Títulos: versalitas con número separado por una barra -------------------
+\titleformat{\section}{\Large\scshape\color{azulutem}}
+  {\thesection\enspace{\color{gristexto}\textbar}}{0.6em}{}
+  [\vspace{0.15em}{\color{gristexto}\titlerule[0.4pt]}]
+\titleformat{name=\section,numberless}{\Large\scshape\color{azulutem}}{}{0pt}{}
+  [\vspace{0.15em}{\color{gristexto}\titlerule[0.4pt]}]
+\titleformat{\subsection}{\large\bfseries\color{azulutem!80!black}}
+  {\thesubsection}{0.8em}{}
+\titlespacing*{\section}{0pt}{1.6em}{0.9em}
+% Un título nunca queda solo al pie de la página
+\pretocmd{\section}{\Needspace{0.28\textheight}}{}{}
+\pretocmd{\subsection}{\Needspace{0.18\textheight}}{}{}
+
+% --- Índice -------------------------------------------------------------------
+\titlecontents{section}[2.2em]{\addvspace{0.5em}\scshape\color{azulutem}}
+  {\contentslabel{2.2em}}{}{\hfill\contentspage}
+\titlecontents{subsection}[4.6em]{\color{gristexto}}
+  {\contentslabel{2.4em}}{}{\titlerule*[0.6pc]{.}\contentspage}
+
+% --- Encabezado y pie ---------------------------------------------------------
 \pagestyle{fancy}
 \fancyhf{}
-\fancyhead[L]{\includegraphics[height=0.75cm]{logo-utem.png}}
-\fancyhead[R]{\small\color{azulutem}INFB8091 -- Desempeño de Sistemas}
-\fancyfoot[C]{\small\thepage}
-\renewcommand{\headrulewidth}{0.6pt}
-\renewcommand{\headrule}{\hbox to\headwidth{\color{verdeutem}\leaders\hrule height \headrulewidth\hfill}}
-\setlength{\headheight}{28pt}
+\fancyhead[L]{\small\scshape\color{gristexto}Informe técnico · Desempeño de Subligol}
+\fancyhead[R]{\includegraphics[height=0.6cm]{logo-utem.png}}
+\fancyfoot[L]{\small\color{gristexto}INFB8091 Desempeño de Sistemas · UTEM 2026-2}
+\fancyfoot[R]{\small\color{gristexto}Página \thepage\ de \pageref*{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\headrule}{\hbox to\headwidth{\color{gristexto}\leaders\hrule height \headrulewidth\hfill}}
+\setlength{\headheight}{24pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[R]{\small\color{gristexto}Página \thepage\ de \pageref*{LastPage}}\renewcommand{\headrulewidth}{0pt}}
+
+% --- Tablas: estilo clásico (booktabs) ----------------------------------------
+\renewcommand{\arraystretch}{1.15}
+
+% --- Recuadros de resultados clave --------------------------------------------
+\newtcolorbox{clave}[1][Resultados clave]{enhanced, breakable, sharp corners,
+  colback=white, colframe=gristexto, boxrule=0.4pt, leftrule=0.4pt,
+  left=10pt, right=10pt, top=6pt, bottom=6pt,
+  fonttitle=\scshape, coltitle=azulutem, colbacktitle=white,
+  attach title to upper={\par\smallskip}, title=#1}
 
 \graphicspath{{./}{../carga/graficos/}{../Capturas configuracion/}}
-\captionsetup{font=small,labelfont=bf}
+\captionsetup{font=small,labelfont={bf,sc}}
 \setlist{itemsep=2pt,topsep=4pt}
+\setlist[itemize,1]{label={\color{azulutem}\textbullet}}
 \newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
 \newcommand{\codigo}[1]{\texttt{#1}}
 \newcolumntype{R}{>{\raggedleft\arraybackslash}X}
 
+% --- RUT de los integrantes ----------------------------------------------------
+% Los RUT no se publican en el repositorio. Están en ruts.tex (excluido por
+% .gitignore) y solo se incluyen en la versión de entrega:
+%   latexmk -pdf informe.tex                          -> informe.pdf (sin RUT, público)
+%   latexmk -pdf -jobname=informe-entrega informe.tex -> informe-entrega.pdf (con RUT)
+\newcommand{\rutWladimir}{}\newcommand{\rutRodrigo}{}\newcommand{\rutLeonardo}{}
+\ifnum\pdfstrcmp{\jobname}{informe-entrega}=0
+  \IfFileExists{ruts.tex}{\input{ruts.tex}}{\PackageWarning{informe}{Falta ruts.tex}}
+\fi
+
 \begin{document}
 
 % -----------------------------------------------------------------------------
-% Portada (aplicar el Manual de Identidad Visual UTEM)
+% Portada: franja lateral azul (Manual de Identidad Visual UTEM)
 % -----------------------------------------------------------------------------
+\newgeometry{left=3.4cm,right=2.5cm,top=2.5cm,bottom=2.5cm}
 \begin{titlepage}
-  \centering
-  \includegraphics[width=9cm]{logo-utem.png}\\[0.6cm]
-  {\color{verdeutem}\rule{\textwidth}{1.5pt}}\\[1cm]
-  {\large Facultad de Ingeniería\par}
-  \vspace{1.5cm}
-  {\Large INFB8091 -- Desempeño de Sistemas\par}
-  \vspace{1cm}
-  {\huge\bfseries\color{azulutem} Análisis de desempeño de Subligol,\\un comercio electrónico bajo carga\par}
-  \vspace{1cm}
-  {\large Informe técnico -- Trabajo Semestre 2, 2026\par}
+  \thispagestyle{empty}
+  \noindent\begin{tikzpicture}[remember picture, overlay]
+    \fill[azulutem] (current page.north west) rectangle ([xshift=1.1cm]current page.south west);
+    \fill[verdeutem] ([xshift=1.1cm]current page.north west) rectangle ([xshift=1.2cm]current page.south west);
+  \end{tikzpicture}%
+  \raggedright
+  \includegraphics[width=6.5cm]{logo-utem.png}\par
+  \vspace{0.3cm}
+  {\color{gristexto}Facultad de Ingeniería\par}
+  \vspace{3.2cm}
+  {\large\scshape\color{gristexto}Informe técnico · Trabajo Semestre 2, 2026\par}
+  \vspace{0.5cm}
+  {\color{azulutem}\rule{\linewidth}{0.8pt}\par}
+  \vspace{0.5cm}
+  {\fontsize{26}{32}\selectfont\color{azulutem} Análisis de desempeño\\de Subligol bajo carga\par}
+  \vspace{0.5cm}
+  {\Large\itshape\color{gristexto} Un comercio electrónico medido con GA4, k6 y Prometheus\par}
+  \vspace{0.5cm}
+  {\color{azulutem}\rule{\linewidth}{0.8pt}\par}
+  \vspace{0.4cm}
+  {\large INFB8091 -- Desempeño de Sistemas\par}
   \vfill
-  {\large
-  \begin{tabular}{rl}
-    Integrantes: & Wladimir Gallardo \\
-                 & Rodrigo Donoso \\
-                 & Leonardo Solís \\[4pt]
-    Profesor:    & Javier Aranda \\[4pt]
-    Fecha:       & Lunes 16 de noviembre de 2026
-  \end{tabular}\par}
-  \vspace{1cm}
-  {\small Sitio: \url{https://subligol-utem.chilecentral.cloudapp.azure.com}\\
+  \renewcommand{\arraystretch}{1.25}
+  \begin{tabular}{@{}l l l@{}}
+    \textsc{Integrantes} & Wladimir Gallardo & \rutWladimir \\
+                 & Rodrigo Donoso    & \rutRodrigo \\
+                 & Leonardo Solís    & \rutLeonardo \\[6pt]
+    \textsc{Profesor}    & Javier Aranda & \\[6pt]
+    \textsc{Fecha}       & Lunes 16 de noviembre de 2026 &
+  \end{tabular}\par
+  \vspace{0.8cm}
+  {\small\color{gristexto}
+  Sitio: \url{https://subligol-utem.chilecentral.cloudapp.azure.com}\\
   Repositorio: \url{https://github.com/Wlvdi/trabajo-desempeno}\par}
 \end{titlepage}
+\restoregeometry
 
 \tableofcontents
 \newpage
@@ -87,6 +154,9 @@
 \section*{Resumen ejecutivo}
 \addcontentsline{toc}{section}{Resumen ejecutivo}
 
+\begin{tcolorbox}[enhanced, sharp corners, colback=white, colframe=gristexto,
+  boxrule=0pt, toprule=0.4pt, bottomrule=0.4pt, left=0pt, right=0pt, top=8pt, bottom=8pt,
+  before upper={\setlength{\parskip}{0.6em}}]
 Se construyó \textbf{Subligol}, una tienda en línea de insumos de sublimación e
 impresión (catálogo de 500 productos, búsqueda, carrito, registro, checkout con
 pago simulado y con Webpay Plus en ambiente de integración), instrumentada con
@@ -106,6 +176,7 @@ CPU de la VM}, compartida por la API (Node.js) y PostgreSQL; una sola consulta
 (productos relacionados del detalle) consume el \textbf{79~\%} del tiempo de la
 base de datos y es la principal propuesta de mejora. La ley de utilización
 predijo una capacidad de $\sim$41~sesiones/s, coherente con lo medido (40--45).
+\end{tcolorbox}
 
 % -----------------------------------------------------------------------------
 \section{Introducción y objetivos}
@@ -126,6 +197,7 @@ Objetivos específicos:
 \end{enumerate}
 
 % -----------------------------------------------------------------------------
+\Needspace{0.5\textheight}
 \section{Arquitectura del sistema}
 
 \begin{figure}[H]
@@ -164,21 +236,76 @@ Objetivos específicos:
 Componente & Decisión y justificación \\
 \midrule
 Frontend & React + Vite (JavaScript). SPA servida como archivos estáticos por Caddy. \\
-API & Node.js 24 + Express 5. Un solo lenguaje en el sitio y en k6. Contraseñas con argon2id y sesiones con JWT. \\
+API & Node.js 24 + Express 5. Un solo lenguaje en el sitio y en k6. Contraseñas con argon2id (Biryukov et al., 2016) y sesiones con JWT. \\
 Base de datos & PostgreSQL 16 con migraciones propias. Seed de 500 productos, 5 categorías, $\sim$3\,000 ventas históricas y 200 clientes de prueba. La búsqueda queda \emph{sin índices} a propósito, como palanca medible. \\
-Pago & Pago simulado (\codigo{mock}, habilitado por variable de entorno) para las pruebas de carga, y Webpay Plus en ambiente de integración de Transbank para el flujo real con tarjetas de prueba (nunca pasarela real). \\
-Observabilidad & prom-client en la API (latencia por ruta, pool, event loop, argon2, compras), node-exporter (VM), cAdvisor (contenedores) y postgres-exporter con \codigo{pg\_stat\_statements}; dashboard de Grafana con 36 paneles. \\
+Pago & Pago simulado (\codigo{mock}, habilitado por variable de entorno) para las pruebas de carga, y Webpay Plus en ambiente de integración de Transbank (Transbank, s.\,f.) para el flujo real con tarjetas de prueba (nunca pasarela real). \\
+Observabilidad & prom-client en la API (latencia por ruta, pool, event loop, argon2, compras), node-exporter (VM), cAdvisor (contenedores) y postgres-exporter con \codigo{pg\_stat\_statements} (PostgreSQL Global Development Group, s.\,f.); dashboard de Grafana con 36 paneles (Prometheus Authors, s.\,f.). \\
 Infraestructura & VM de Azure (Ubuntu 24.04, 2 vCPU, 7,7~GB) con Docker Compose y Caddy con certificado de Let's Encrypt. Tener la API y la base en una VM propia permite medir CPU, memoria e I/O directamente. \\
 \bottomrule
 \end{tabularx}
 \caption{Componentes y decisiones de diseño.}
 \end{table}
 
+\subsection{Proceso de construcción de la tienda}
+
+La tienda se construyó en seis etapas, cada una con su commit, sus tests
+automáticos y su \emph{Prompt Card} (sección~\ref{sec:agente}). El criterio que
+guió las decisiones fue que todo lo que se quisiera analizar después pudiera
+medirse en un servidor propio.
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+Etapa & Qué se hizo y por qué \\
+\midrule
+0. Punto de partida &
+  Leonardo construyó la tienda en React con catálogo, carrito y panel de
+  administración sobre Supabase. Un servicio administrado no deja ver la CPU,
+  las consultas ni el pool de conexiones, por lo que se decidió migrar a una API
+  propia. \\
+1. Configuración (v0.1) &
+  \codigo{AGENTS.md}, \codigo{CLAUDE.md}, registro de prompts y archivos base.
+  Se fijó la regla de explicar el diseño antes de implementar. \\
+2. Backend y datos (v0.2) &
+  API en Express 5 y PostgreSQL 16 en Docker, migraciones y datos semilla
+  deterministas (500 productos), para que cada prueba parta del mismo estado.
+  Las páginas tienen peso distinto a propósito: home liviana, listado media y
+  detalle pesada (galería, ventas de 90 días y relacionados). Login con argon2id
+  y JWT. \\
+3. Compra y métricas (v0.3) &
+  Carrito persistente en la base (también anónimo, con fusión al iniciar
+  sesión). Checkout en una sola transacción que bloquea los productos en orden
+  fijo, para evitar sobreventa y bloqueos mutuos; se probó con 20 compradores
+  simultáneos sobre un stock de 5. Pago simulado para las pruebas de carga.
+  Métricas de la API con prom-client, Prometheus y Grafana. \\
+4. Frontend y GA4 (v0.4) &
+  La tienda consume la API propia y se quitó Supabase. GA4 vía Tag Manager con
+  los eventos de comercio electrónico, la dimensión \codigo{escenario\_prueba} y
+  las Web Vitals, con respaldo en Prometheus. \\
+5. Administración (v0.5) &
+  Panel protegido por rol (inventario, compras, ventas manuales, dashboard y
+  auditoría). Sus rutas no envían eventos a GA4 para no mezclar tráfico interno
+  con el de clientes. \\
+6. Despliegue y carga (v1.0) &
+  VM de Azure con Caddy y HTTPS, generadores k6 y protocolo de ejecución.
+  Después se agregó Webpay Plus en ambiente de integración, sin cambiar la
+  medición. \\
+\bottomrule
+\end{tabularx}
+\caption{Etapas de construcción del sitio.}
+\end{table}
+
+Al terminar la etapa 5 el proyecto tenía 368 tests del backend y 84 del
+frontend, incluidos tests de concurrencia del checkout y de las ventas
+manuales.
+
 % -----------------------------------------------------------------------------
 \section{Uso del agente de codificación}
+\label{sec:agente}
 
 Todo el desarrollo se hizo con \textbf{Claude Code} (modelo \textbf{Claude Opus
-5.5}). Siguiendo el enunciado, el primer prompt configuró \codigo{AGENTS.md}
+5.5}) (Anthropic, s.\,f.). Siguiendo el enunciado, el primer prompt configuró \codigo{AGENTS.md}
 (contexto del proyecto, español neutro, explicar antes de implementar y esperar
 confirmación, preguntar por commit y deploy, testing automático y compilar antes
 de terminar) y el archivo \codigo{PromptCard.txt}, donde se registraron
@@ -187,6 +314,27 @@ de terminar) y el archivo \codigo{PromptCard.txt}, donde se registraron
 configuración inicial a las pruebas de carga) con objetivo, prompts completos
 con fecha y modelo, variables, salida obtenida, casos de prueba, iteraciones,
 commits y deploy.
+En las tarjetas de desempeño (02, 03, 04 y 06) el grupo agregó, además del
+prompt original, una \emph{versión refinada} del Prompt Base, escrita después
+de ejecutar el trabajo, que deja explícitas sus decisiones (peso de cada
+página, métricas, perfiles, escenarios, SLO y protocolo de ejecución). Es el
+prompt que se usaría para repetir el trabajo y no reemplaza al original.
+
+\paragraph{Decisiones tomadas por el grupo.} El agente proponía un diseño y
+el grupo lo aprobaba o lo corregía antes de que se escribiera código; las
+respuestas a los planes quedaron registradas en las tarjetas 02, 04 y 05.
+Las decisiones que afectan el desempeño las tomó el grupo y no el modelo:
+\begin{itemize}
+  \item Dejar la búsqueda \emph{sin índices} para tener una mejora medible.
+  \item Usar un pago simulado bajo carga y no cargar el sandbox de Transbank
+        (guía, sección 5.3).
+  \item Usar un modelo abierto (tasa de llegada) en el estrés, para que la
+        carga no baje cuando el servidor se pone lento.
+  \item Invalidar la primera ejecución de estrés al ver que el límite era la red
+        del generador, y repetirla con pausas reducidas.
+  \item Fijar los umbrales de los SLO y el criterio de saturación antes de
+        ejecutar las pruebas.
+\end{itemize}
 
 \paragraph{Distribución del trabajo.} Leonardo Solís construyó la primera
 versión de la tienda (frontend React con catálogo, carrito y panel de
@@ -314,11 +462,75 @@ Estrés & Modelo abierto (tasa de llegada): mesetas de 10, 20, 30, 40, 50 y 60~s
 \caption{Escenarios. Todos con 1~min de calentamiento excluido del análisis.}
 \end{table}
 
-\paragraph{Umbrales (SLO).} Errores~<~1~\%, p95~<~800~ms, p99~<~1\,500~ms,
+Baja y normal usan un \emph{modelo cerrado} (un número fijo de usuarios
+virtuales), que representa una tienda con una cantidad conocida de visitantes.
+El estrés usa un \emph{modelo abierto}: las sesiones llegan a una tasa fija
+aunque el servidor se ponga lento, como ocurre con usuarios reales; en un modelo
+cerrado la carga bajaría sola al saturarse y ocultaría el problema
+(Grafana Labs, s.\,f.).
+
+\subsection{Indicadores y forma de medición}
+
+Se eligieron indicadores que responden tres preguntas: qué tan rápido
+responde el sistema, cuánto trabajo alcanza a hacer y qué recurso lo limita.
+Se agregaron los de experiencia de usuario que pide la guía.
+
+\begin{table}[H]
+\centering\small
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.9cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Indicador & Por qué se eligió & Cómo se midió \\
+\midrule
+Latencia p50, p95 y p99 &
+  El promedio oculta a los usuarios que esperan mucho. El p50 es la
+  experiencia típica, el p95 la de casi todos y el p99 muestra la cola
+  (Dean y Barroso, 2013; Jain, 1991). &
+  k6 (\codigo{http\_req\_duration}) por página, con la etiqueta
+  \codigo{pagina}; histogramas de prom-client en la API. \\
+Throughput (req/s y sesiones/s), ofrecido frente a logrado &
+  Mientras el logrado sigue al ofrecido hay capacidad; cuando se separa, el
+  sistema está saturado. &
+  k6 (\codigo{http\_reqs}, \codigo{iterations}) y tasa de peticiones en
+  Prometheus. \\
+Tasa de error &
+  Un sistema puede ser rápido porque rechaza peticiones. Se separan los
+  errores del servidor de los del generador. &
+  k6 (\codigo{http\_req\_failed} y \emph{checks}); respuestas 5xx en
+  Prometheus. \\
+Uso de CPU, memoria, disco y pool de conexiones &
+  Identifican el recurso limitante y permiten aplicar la ley de utilización
+  (Menascé et al., 2004). &
+  node-exporter (VM), cAdvisor (contenedores) y métricas del pool en la
+  API, cada 5~s. \\
+Consultas SQL más costosas &
+  Ubican el cuello de botella dentro de la base de datos. &
+  \codigo{pg\_stat\_statements} (PostgreSQL Global Development Group, s.\,f.). \\
+Web Vitals p75 (TTFB, LCP, INP, CLS) &
+  Miden la experiencia percibida en el navegador; Google usa el p75 y define
+  umbrales «bueno» (Walton, 2020). &
+  Navegador real de k6 en paralelo y biblioteca \codigo{web-vitals} hacia GA4
+  y Prometheus. \\
+Rebote, duración, vistas por sesión y conversión &
+  Muestran si la carga cambia el comportamiento de los usuarios
+  (Google, s.\,f.). &
+  GA4 segmentado por \codigo{escenario\_prueba}; conversión = compras
+  correctas / sesiones de k6. \\
+\bottomrule
+\end{tabularx}
+\caption{Indicadores escogidos, su justificación y su forma de medición.}
+\end{table}
+
+Para que las mediciones sean comparables, cada escenario se ejecutó tres veces,
+se excluyó el minuto de calentamiento y se reporta el promedio con el mínimo y
+el máximo. Cada conclusión se contrastó con dos fuentes, el cliente (k6) y el
+servidor (Prometheus), porque una sola puede engañar (sección~\ref{sec:limitaciones}).
+
+\paragraph{Umbrales (SLO).} Definidos antes de ejecutar las pruebas
+(Beyer et al., 2016): errores~<~1~\%, p95~<~800~ms, p99~<~1\,500~ms,
 p95 del detalle~<~1\,000~ms, checkout completo p95~<~2\,000~ms y checks~>~99~\%.
 
 \paragraph{Calibración.} Una prueba piloto (10 VUs) estimó con la ley de
-utilización ($U = X \cdot S$) una capacidad de $\sim$22~sesiones/s; tras la carga
+utilización ($U = X \cdot S$) (Menascé et al., 2004) una capacidad de $\sim$22~sesiones/s; tras la carga
 normal la estimación subió a $\sim$37~sesiones/s y con ella se fijaron los
 escalones del estrés (10--60).
 
@@ -364,7 +576,7 @@ Compras exitosas   & 17 [15--18] & 184 [172--193] \\
 Con seis veces más carga, la latencia no cambia: el sistema trabaja lejos de su
 capacidad (CPU de la VM $\approx$~6~\% en baja y 11~\% en normal). El p99 de
 $\sim$120~ms corresponde al \emph{login}, que es lento por diseño (argon2id). La
-ley de Little se cumple: en normal, $N = X\,(R+Z) = 2{,}663 \times 11{,}32
+ley de Little (Little, 1961) se cumple: en normal, $N = X\,(R+Z) = 2{,}663 \times 11{,}32
 \approx 30$~VUs.
 
 \begin{table}[H]
@@ -464,6 +676,7 @@ Ofrecido & Logrado & Logrado & p50 & p95 & p99 & Error & CPU VM & CPU api / db \
 \caption{Identificación del punto de saturación (guía, sección 6.5).}
 \end{figure}
 
+\begin{clave}[Punto de saturación y recurso limitante]
 \begin{itemize}
   \item \textbf{Rodilla:} 40~sesiones/s ($\sim$155~req/s). La CPU de la VM pasa
         al 95~\% y el p95 salta de 117~ms a 705~ms [554--914].
@@ -481,6 +694,7 @@ Ofrecido & Logrado & Logrado & p50 & p95 & p99 & Error & CPU VM & CPU api / db \
         por sesión, y $X_{\max} \approx 2 / 0{,}048 \approx 41$~sesiones/s;
         lo medido fue 40--45.
 \end{itemize}
+\end{clave}
 
 % -----------------------------------------------------------------------------
 \section{Experiencia de usuario: sin carga vs.\ bajo carga}
@@ -642,6 +856,42 @@ no las pierde.
         mantiene en $\sim$9,5~\%: bajo saturación los usuarios esperan más,
         pero las compras no se pierden.
 \end{itemize}
+
+% -----------------------------------------------------------------------------
+\section*{Referencias}
+\addcontentsline{toc}{section}{Referencias}
+
+\begin{list}{}{\setlength{\leftmargin}{1.5em}\setlength{\itemindent}{-1.5em}
+  \setlength{\itemsep}{4pt}\small}
+\item Anthropic. (s.\,f.). \emph{Claude Code}. \url{https://www.anthropic.com/claude-code}
+\item Beyer, B., Jones, C., Petoff, J. y Murphy, N. R. (Eds.). (2016).
+  \emph{Site reliability engineering: How Google runs production systems}. O'Reilly Media.
+\item Biryukov, A., Dinu, D. y Khovratovich, D. (2016). Argon2: New generation of
+  memory-hard functions for password hashing and other applications. En
+  \emph{2016 IEEE European Symposium on Security and Privacy} (pp.~292--302). IEEE.
+  \url{https://doi.org/10.1109/EuroSP.2016.31}
+\item Dean, J. y Barroso, L. A. (2013). The tail at scale. \emph{Communications
+  of the ACM, 56}(2), 74--80. \url{https://doi.org/10.1145/2408776.2408794}
+\item Google. (s.\,f.). \emph{Measure ecommerce} [Documentación de Google
+  Analytics 4]. \url{https://developers.google.com/analytics/devguides/collection/ga4/ecommerce}
+\item Grafana Labs. (s.\,f.). \emph{Open and closed models} [Documentación de
+  Grafana k6]. \url{https://grafana.com/docs/k6/latest/using-k6/scenarios/concepts/open-vs-closed/}
+\item Jain, R. (1991). \emph{The art of computer systems performance analysis:
+  Techniques for experimental design, measurement, simulation, and modeling}. Wiley.
+\item Little, J. D. C. (1961). A proof for the queuing formula: $L = \lambda W$.
+  \emph{Operations Research, 9}(3), 383--387. \url{https://doi.org/10.1287/opre.9.3.383}
+\item Menascé, D. A., Almeida, V. A. F. y Dowdy, L. W. (2004). \emph{Performance
+  by design: Computer capacity planning by example}. Prentice Hall.
+\item PostgreSQL Global Development Group. (s.\,f.). \emph{pg\_stat\_statements:
+  Track statistics of SQL planning and execution} [Documentación de PostgreSQL 16].
+  \url{https://www.postgresql.org/docs/16/pgstatstatements.html}
+\item Prometheus Authors. (s.\,f.). \emph{Histograms and summaries}
+  [Documentación de Prometheus]. \url{https://prometheus.io/docs/practices/histograms/}
+\item Transbank. (s.\,f.). \emph{Webpay Plus} [Documentación para
+  desarrolladores]. \url{https://www.transbankdevelopers.cl/documentacion/webpay-plus}
+\item Walton, P. (2020). \emph{Web Vitals}. web.dev.
+  \url{https://web.dev/articles/vitals}
+\end{list}
 
 % -----------------------------------------------------------------------------
 \section*{Anexos}

@@ -43,3 +43,20 @@ carga/resultados/**/*.navegador.log
 !carga/resultados/**/*.servidor.csv
 !carga/resultados/**/*.rutas.csv
 !carga/resultados/**/*.consultas.csv
+
+# Informe: los RUT de los integrantes no se publican (solo van en la versión de entrega)
+informe/ruts.tex
+informe/informe-entrega.*
+# Archivos auxiliares de LaTeX
+informe/*.aux
+informe/*.fdb_latexmk
+informe/*.fls
+informe/*.out
+informe/*.toc
+presentacion/*.aux
+presentacion/*.fdb_latexmk
+presentacion/*.fls
+presentacion/*.nav
+presentacion/*.out
+presentacion/*.snm
+presentacion/*.toc

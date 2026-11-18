@@ -4,8 +4,10 @@ Proyecto: Subligol
 Formato: Prompt Card, una tarjeta por versión del software. Cada
 tarjeta agrupa los prompts significativos de esa versión
 (arquitectura, funcionalidades completas, GA4/k6/observabilidad,
-decisiones de diseño, bugs relevantes). El Prompt Base y la salida
-obtenida se copian textuales; [NNNN] es el número de cada prompt.
+decisiones de diseño, bugs relevantes). [NNNN] es el número de cada
+prompt. El PROMPT ORIGINAL y la salida obtenida se copian textuales.
+En las tarjetas 02, 03, 04 y 06 el PROMPT BASE es una versión refinada,
+escrita después por el grupo, con sus decisiones de desempeño explícitas.
 ======================================================================
 
 ÍNDICE (fechas y horas en America/Santiago)
@@ -32,7 +34,9 @@ OBJETIVO
 PROMPT BASE
   (texto completo de cada prompt, tal como se usó)
 
-  [0001] [COMPLETAR: 14-11-26] [COMPLETAR: HH:MM] – Wladimir – Claude Code (Opus 5.5)
+  [0001] 14-11-26 12:40 – Wladimir – Claude Code (Opus 5.5)
+    (Prompt escrito como plantilla: los valores de cada [placeholder]
+    están en VARIABLES / PLACEHOLDERS. Hora tomada del commit e5f7c2a.)
     Adjunto el enunciado del trabajo (docs/enunciado.pdf). Soy estudiante
     del curso INFB8091 Desempeño de Sistemas (UTEM). Elegí la Opción 1:
     e-commerce. Mi comercio se llamará [nombre], dedicado a [rubro].
@@ -61,10 +65,11 @@ PROMPT BASE
 
 ----------------------------------------------------------------------
 VARIABLES / PLACEHOLDERS
-  {nombre} → nombre del comercio (Subligol)
-  {rubro} → a qué se dedica el comercio
-  {url_repositorio} → remoto de GitHub del grupo
-  {stack} → tecnologías elegidas para frontend, backend, observabilidad y carga
+  [nombre] → Subligol
+  [rubro] → insumos de sublimación e impresión
+  [URL del repositorio en GitHub] → https://github.com/Wlvdi/trabajo-desempeno
+  Stack → el prompt dice TypeScript, pero el sitio existente estaba en
+    JavaScript y se mantuvo así (ver Iteración 3).
 ----------------------------------------------------------------------
 EJEMPLO DE ENTRADA
   Enunciado del trabajo (PDF), el AGENTS.md existente y el stack
@@ -103,6 +108,9 @@ ITERACIONES / FEEDBACK
                brechas frente al enunciado) en vez de crear todo desde cero.
   Iteración 2: la regla "explicar antes de implementar y esperar confirmación" quedó
                en AGENTS.md y se aplicó en todos los prompts siguientes.
+  Iteración 3: al revisar el repositorio se decidió conservar JavaScript (el sitio
+               existente ya estaba en JS) y usar src/, backend/, infra/ y carga/
+               en vez de la estructura de carpetas propuesta en el prompt.
 ----------------------------------------------------------------------
 METADATOS
   Fecha de creación: 14/11/2026
@@ -110,7 +118,8 @@ METADATOS
   Contexto de uso: Proyecto Subligol – INFB8091 Desempeño de Sistemas, UTEM 2026-2 – configuración
   Agente y modelo: Claude Code (Opus 5.5)
   Commits:
-    [0001] a1b2c3d chore: configuración del agente, LogFile y archivos base
+    [0001] e5f7c2a docs: AGENTS.md, README y LogFile iniciales
+           8521bbf docs: CLAUDE.md, README con estado actual y ajustes en AGENTS y LogFile
   Deploy:
     [0001] no
 ======================================================================
@@ -128,7 +137,34 @@ OBJETIVO
   la Fase 2: estructura y salud, migraciones con datos semilla, catálogo
   con búsqueda sin índices, y registro e inicio de sesión con argon2id y JWT.
 ----------------------------------------------------------------------
-PROMPT BASE
+PROMPT BASE (versión refinada)
+  Prompt reutilizable escrito por el grupo después de ejecutar el trabajo,
+  con las decisiones de desempeño del grupo escritas de forma explícita.
+  Es el que se usaría para repetir el trabajo; NO es el texto que se envió
+  en su momento (ese está más abajo, en PROMPT ORIGINAL).
+
+  [0002 refinado]
+    Propón el plan para construir el backend propio que reemplace a Supabase
+    y espera mi confirmación antes de escribir código. Decisiones del grupo,
+    que no debes cambiar sin preguntarme:
+    - Node.js 24 + Express 5 en JavaScript ESM y PostgreSQL 16 en Docker
+      Compose. Un servidor propio es necesario para medir CPU, memoria,
+      consultas SQL y pool de conexiones bajo carga.
+    - Páginas con peso distinto a propósito, para observar la diferencia en
+      las pruebas: home LIVIANA (destacados y categorías), listado MEDIO
+      (filtros y paginación en el servidor) y detalle PESADO (galería,
+      unidades vendidas en 90 días y relacionados por ventas).
+    - Búsqueda con ILIKE y SIN índices: pg_trgm queda como mejora medible.
+    - Pool de PostgreSQL configurable con PG_POOL_MAX (10 por defecto).
+    - Datos semilla deterministas (500 productos) para que cada prueba
+      parta del mismo estado.
+    - Contraseñas con argon2id: es caro en CPU y queremos medir su efecto.
+    - El panel de administración se migra después de la tienda.
+    Entrega el plan como una lista de commits pequeños, cada uno con tests
+    automáticos, y comienza por el commit 1 (estructura y /api/salud).
+
+----------------------------------------------------------------------
+PROMPT ORIGINAL
   (texto completo de cada prompt, tal como se usó)
 
   [0002] 14-11-26 13:16 – Wladimir – Claude Code (Opus 5.5)
@@ -414,6 +450,9 @@ ITERACIONES / FEEDBACK
                también con registros simultáneos.
   Iteración 3: se anotó el riesgo de las ventas del seed (unidades_vendidas_90d en 0
                desde el 30-01-2027).
+  Iteración 4: el prompt 0002 era un plan general que se apoyaba en las recomendaciones
+               del agente; la versión refinada deja escritas las decisiones del grupo
+               (peso de cada página, búsqueda sin índices, pool, argon2id).
 ----------------------------------------------------------------------
 METADATOS
   Fecha de creación: 14/11/2026
@@ -445,7 +484,33 @@ OBJETIVO
   instrumentar la API con prom-client, Prometheus, Grafana y exportadores
   para observar el desempeño bajo carga.
 ----------------------------------------------------------------------
-PROMPT BASE
+PROMPT BASE (versión refinada)
+  Prompt reutilizable escrito por el grupo después de ejecutar el trabajo,
+  con las decisiones de desempeño del grupo escritas de forma explícita.
+  Es el que se usaría para repetir el trabajo; NO es el texto que se envió
+  en su momento (ese está más abajo, en PROMPT ORIGINAL).
+
+  [0008 refinado]
+    Commit 7: métricas de la API y monitoreo. Explícame el diseño y espera
+    mi confirmación. Decisiones del grupo:
+    - prom-client en la API: histograma http_request_duration_seconds por
+      método, ruta (como plantilla, para no explotar la cardinalidad) y
+      estado; peticiones en curso; pool de PostgreSQL (total, libres, en
+      espera); duración de argon2; contadores de logins y compras; métricas
+      de Node (event loop).
+    - /metrics en un puerto interno (9464) que no se publica.
+    - Prometheus con scrape cada 5 s y remote write para recibir las
+      métricas de k6; Grafana con un dashboard provisionado.
+    - node-exporter (VM), cAdvisor (contenedores) y postgres-exporter con
+      pg_stat_statements; track_io_timing activado en PostgreSQL.
+    - Prometheus y Grafana solo en 127.0.0.1 (se acceden por túnel SSH).
+    - El monitoreo se levanta siempre con docker compose up -d, y en la
+      misma VM, para medir también su costo (debe ser bajo).
+    Agrega tests de las métricas y verifica que todas las consultas del
+    dashboard devuelvan datos con tráfico de humo.
+
+----------------------------------------------------------------------
+PROMPT ORIGINAL
   (texto completo de cada prompt, tal como se usó)
 
   [0006] 14-11-26 15:44 – Wladimir – Claude Code (Opus 5.5)
@@ -687,6 +752,8 @@ ITERACIONES / FEEDBACK
                los ErrorHttp 5xx lanzados a propósito.
   Iteración 2: cAdvisor de gcr.io no reconocía contenedores con Docker 29; se cambió
                a la imagen 0.55.0 de ghcr.io.
+  Iteración 3: el prompt 0008 confirmaba decisiones puntuales; la versión refinada lista
+               todas las métricas y la infraestructura de monitoreo que eligió el grupo.
 ----------------------------------------------------------------------
 METADATOS
   Fecha de creación: 14/11/2026
@@ -716,7 +783,31 @@ OBJETIVO
   Web Vitals, con la dimensión escenario_prueba para comparar sin carga y
   bajo carga.
 ----------------------------------------------------------------------
-PROMPT BASE
+PROMPT BASE (versión refinada)
+  Prompt reutilizable escrito por el grupo después de ejecutar el trabajo,
+  con las decisiones de desempeño del grupo escritas de forma explícita.
+  Es el que se usaría para repetir el trabajo; NO es el texto que se envió
+  en su momento (ese está más abajo, en PROMPT ORIGINAL).
+
+  [0010 refinado]
+    Integración con Google Analytics 4. Explícame el diseño y espera mi
+    confirmación. Decisiones del grupo:
+    - GA4 vía Google Tag Manager, sin cargar GA4 si no hay ID configurado.
+    - Eventos de comercio electrónico: view_item_list, view_item, search,
+      add_to_cart, remove_from_cart, view_cart, begin_checkout,
+      add_shipping_info, add_payment_info, purchase, login y sign_up.
+      purchase solo con el pago confirmado y con tipo_cliente (invitado o
+      registrado).
+    - Dimensión escenario_prueba tomada de ?escenario= en la URL, para
+      separar en GA4 el tráfico sin carga, baja, normal y estrés.
+    - Web Vitals (TTFB, FCP, LCP, INP, CLS) como evento web_vitals y, como
+      respaldo, POST /api/vitals hacia Prometheus.
+    - page_view manual en cada cambio de ruta; sin datos personales en los
+      eventos; debug_mode solo en desarrollo.
+    Agrega tests y verifica en DebugView que llegan los eventos.
+
+----------------------------------------------------------------------
+PROMPT ORIGINAL
   (texto completo de cada prompt, tal como se usó)
 
   [0009] 14-11-26 17:14 – Rodrigo – Claude Code (Opus 5.5)
@@ -931,6 +1022,9 @@ ITERACIONES / FEEDBACK
                y el estado de debug_mode.
   Iteración 3: node-exporter falla en Docker Desktop para Windows; en Linux funciona,
                sin cambios.
+  Iteración 4: el prompt 0010 pedía el diseño al agente y confirmaba tres puntos; la
+               versión refinada deja explícitos los eventos, la dimensión
+               escenario_prueba y el respaldo de Web Vitals.
 ----------------------------------------------------------------------
 METADATOS
   Fecha de creación: 14/11/2026
@@ -1185,7 +1279,52 @@ OBJETIVO
   protocolo de ejecución y documentación, y ejecutar y analizar las
   pruebas contra la VM con 3 repeticiones por escenario.
 ----------------------------------------------------------------------
-PROMPT BASE
+PROMPT BASE (versión refinada)
+  Prompt reutilizable escrito por el grupo después de ejecutar el trabajo,
+  con las decisiones de desempeño del grupo escritas de forma explícita.
+  Es el que se usaría para repetir el trabajo; NO es el texto que se envió
+  en su momento (ese está más abajo, en PROMPT ORIGINAL).
+
+  [0012 refinado]
+    Fase 1.2: generadores de carga con k6. Explícame el diseño y espera mi
+    confirmación; no cambies estos parámetros sin preguntarme:
+    - 4 perfiles sorteados por peso: navegante 50 % (home, listado y 1 a 3
+      detalles), buscador 25 % (home, búsqueda y búsqueda con filtro,
+      detalle), abandono 15 % (detalle, agrega al carrito y se va) y
+      comprador 10 % (login o invitado, detalle, carrito, checkout con pago
+      simulado y orden).
+    - Pausas entre pasos de 1 a 6 s, multiplicables con FACTOR_PAUSAS.
+    - Escenarios: humo (1 VU), piloto (10 VUs), baja (5 VUs) y normal
+      (30 VUs) con modelo cerrado; estrés con modelo abierto (tasa de llegada)
+      en mesetas configurables con ESTRES_ESCALONES.
+    - 1 min de calentamiento excluido de los umbrales y del análisis.
+    - SLO: errores < 1 %, p95 < 800 ms, p99 < 1500 ms, p95 del detalle
+      < 1000 ms, checkout p95 < 2000 ms y checks > 99 %.
+    - Etiqueta "pagina" en cada petición para tener percentiles por página.
+    - Navegador real en paralelo con ?escenario= para Web Vitals y GA4, y
+      métricas de k6 enviadas a Prometheus.
+    - Un script de ejecución que guarde por cada prueba: metadatos (commit,
+      horas, parámetros), reporte HTML, resumen JSON, CSV crudo y la CPU del
+      generador.
+    No ejecutes pruebas contra la VM todavía.
+
+  [0013 refinado]
+    Ejecución de las pruebas contra la VM. Protocolo del grupo:
+    - Tres repeticiones de baja y de normal, con la base resembrada antes de
+      cada una; resultados en una carpeta por escenario.
+    - Después de cada ejecución revisa y resume: p50, p95 y p99 por página,
+      throughput, tasa de error, umbrales y CPU de la VM; compara con las
+      repeticiones anteriores.
+    - Valida la ley de Little (N = X·(R+Z)) y estima la capacidad con la ley
+      de utilización (U = X·S).
+    - Con esa estimación propón los escalones del estrés y espera mi
+      aprobación antes de usarlos.
+    - Si un resultado parece anómalo, contrasta k6 con Prometheus antes de
+      concluir y avísame; yo decido si la ejecución se invalida.
+    - Dame el comando de la siguiente prueba solo cuando yo lo pida.
+
+----------------------------------------------------------------------
+PROMPT ORIGINAL
   (texto completo de cada prompt, tal como se usó)
 
   [0012] 15-11-26 00:13 – Wladimir – Claude Code (Opus 5.5)
@@ -1287,6 +1426,10 @@ ITERACIONES / FEEDBACK
                página.
   Iteración 2: con la piloto y la normal se recalibraron los escalones del estrés a
                10…60 sesiones/s.
+  Iteración 3: los prompts 0012 y 0013 eran breves y confirmaban un diseño explicado
+               antes; la versión refinada deja escritos los perfiles, los escenarios,
+               los SLO y el protocolo, y reserva al grupo la aprobación de los
+               escalones del estrés y la invalidación de ejecuciones.
 ----------------------------------------------------------------------
 METADATOS
   Fecha de creación: 15/11/2026
