@@ -1,11 +1,13 @@
 # Subligol
 
+> **Grupo Deadlock** · Wladimir Gallardo · Rodrigo Donoso · Leonardo Solís
+
 Proyecto del curso **INFB8091 Desempeño de Sistemas** (UTEM, 2026-2).
 Tienda online de insumos de sublimación y estampados, construida para
 instrumentarla con Google Analytics 4, generar carga sintética con k6 y
 analizar su desempeño (guía: `guia_desempeno_sistemas.pdf`).
 
-## Integrantes
+## Integrantes (grupo Deadlock)
 - Wladimir Gallardo
 - Rodrigo Donoso
 - Leonardo Solís
